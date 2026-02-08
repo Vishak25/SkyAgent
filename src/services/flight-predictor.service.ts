@@ -52,17 +52,29 @@ export class FlightPredictorService {
 
   async getFlightStatus(flightNumber: string): Promise<FlightScenario> {
     try {
-      // Call the Python ST-GNN Backend
-      const response = await fetch(`http://localhost:8000/predict/${flightNumber}`);
+      const ident = flightNumber.trim().toUpperCase();
+      const response = await fetch(`http://localhost:8000/predict/${encodeURIComponent(ident)}`);
 
-      if (!response.ok) {
-        throw new Error(`Backend API Error: ${response.body}`);
+      // Always try to parse JSON so we can surface useful backend errors (even on non-2xx)
+      let data: any = null;
+      try {
+        data = await response.json();
+      } catch {
+        data = null;
       }
 
-      const data = await response.json();
+      if (!response.ok) {
+        const msg =
+          data?.detail ||
+          data?.error ||
+          data?.message ||
+          (data?.detail?.detail ?? data?.detail?.error) ||
+          `Backend API Error (${response.status})`;
+        throw new Error(msg);
+      }
 
-      if (data.error) {
-        throw new Error(data.detail || 'Flight not found in live data.');
+      if (data?.error) {
+        throw new Error(data.detail || data.error || 'Flight not found in live data.');
       }
 
       return {

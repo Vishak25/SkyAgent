@@ -2,8 +2,6 @@
 
 SkyCast AI is an advanced aviation intelligence platform that uses a **Graph Neural Network (ST-GNN)** to predict flight delays and provide passenger-centric insights. It models the aviation network as a dynamic graph, fusing real-time data from multiple sources to understand how congestion and weather propagate delays across the system.
 
-![Success Proof](/Users/vishaknandakumar/.gemini/antigravity/brain/17d6ed68-bc75-4cc4-bc49-7a1ace4c316a/ai_insight_card_1770071355405.png)
-
 ## 🚀 Key Features
 
 *   **Spatio-Temporal Graph Modeling:** Uses PyTorch Geometric to represent airports as nodes and flights as edges.
@@ -41,7 +39,7 @@ graph TD
 
 ### Prerequisites
 *   Node.js & npm
-*   Python 3.9+
+*   Python 3.11+ (recommended)
 *   API Keys: OpenSky (Account), FlightAware (Free Tier), CheckWX (Free Tier).
 
 ### 1. Backend Setup
@@ -51,12 +49,17 @@ graph TD
     ```
 2.  Install dependencies:
     ```bash
+    # Option A (pinned direct deps)
     pip install -r requirements.txt
+
+    # Option B (fully pinned lockfile)
+    # pip install -r requirements.lock
     ```
-3.  Create `.env` file:
+3.  Create `.env` file (start from `backend/.env.example`):
     ```env
-    OPENSKY_USER=your_username
-    OPENSKY_PASSWORD=your_password
+    # OpenSky OAuth2 Client Credentials (client_id / client_secret)
+    OPENSKY_USER=your_client_id
+    OPENSKY_PASSWORD=your_client_secret
     FLIGHTAWARE_API_KEY=your_key
     CHECKWX_API_KEY=your_key
     ```

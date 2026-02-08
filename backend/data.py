@@ -1,209 +1,343 @@
+from __future__ import annotations
+
+import math
+import os
+from datetime import datetime
+from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 import torch
 from torch_geometric.data import Data
-import networkx as nx
-import numpy as np
-from typing import Tuple, Dict
-from datetime import datetime
 
-from api_clients import OpenSkyClient, AeroAPIClient, CheckWXClient
+from api_clients import AeroAPIClient, CheckWXClient, OpenSkyClient
+
+
+def _clamp(v: float, lo: float, hi: float) -> float:
+    return max(lo, min(hi, v))
+
+
+def _uniq_preserve(items: Sequence[str]) -> List[str]:
+    seen = set()
+    out: List[str] = []
+    for x in items:
+        x = (x or "").strip().upper()
+        if not x or x in seen:
+            continue
+        seen.add(x)
+        out.append(x)
+    return out
+
+
+def _fmt_time(iso_str: Optional[str]) -> Optional[str]:
+    if not iso_str:
+        return None
+    try:
+        dt = datetime.fromisoformat(iso_str.replace("Z", "+00:00"))
+        return dt.strftime("%H:%M")
+    except Exception:
+        return None
+
+
+def _category_to_condition(cat: str) -> str:
+    cat = (cat or "").upper()
+    if cat == "VFR":
+        return "Clear"
+    if cat == "MVFR":
+        return "Cloudy"
+    if cat == "IFR":
+        return "Low Visibility"
+    if cat == "LIFR":
+        return "Storm / Severe IFR"
+    return "Unknown"
+
 
 class AviationGraphHandler:
     """
-    Handles the construction of the aviation graph (Nodes=Airports, Edges=Flights).
-    Integrates with API Clients to fetch real-time features.
+    Builds a per-request aviation graph (nodes=airports, edges=connections into origin + the target route)
+    and runs inference for the requested flight.
+
+    Key guarantees (P1):
+    - We resolve the live flight's origin/destination FIRST (AeroAPI), then build the graph for that route,
+      then run the model.
+    - Airport code normalization is consistent: nodes use IATA; weather uses ICAO when available.
     """
+
     def __init__(self):
         self.opensky = OpenSkyClient()
         self.aeroapi = AeroAPIClient()
         self.checkwx = CheckWXClient()
-        
-        # Define a static set of major hubs for the MVP
-        self.airports = ['ORD', 'JFK', 'LHR', 'LAX', 'DXB', 'HND', 'CDG', 'AMS', 'FRA', 'SIN']
-        self.airport_to_idx = {code: i for i, code in enumerate(self.airports)}
+
+        # Base hubs for the demo graph; request-specific origin/dest are added dynamically.
+        self.base_airports = ["ORD", "JFK", "LHR", "LAX", "DXB", "HND", "CDG", "AMS", "FRA", "SIN"]
+
+        # MVP mapping for common hubs (IATA -> ICAO), used when AeroAPI airport lookup is unavailable.
         self.iata_to_icao = {
-            'ORD': 'KORD', 'JFK': 'KJFK', 'LHR': 'EGLL', 'LAX': 'KLAX',
-            'DXB': 'OMDB', 'HND': 'RJTT', 'CDG': 'LFPG', 'AMS': 'EHAM',
-            'FRA': 'EDDF', 'SIN': 'WSSS'
+            "ORD": "KORD",
+            "JFK": "KJFK",
+            "LHR": "EGLL",
+            "LAX": "KLAX",
+            "DXB": "OMDB",
+            "HND": "RJTT",
+            "CDG": "LFPG",
+            "AMS": "EHAM",
+            "FRA": "EDDF",
+            "SIN": "WSSS",
         }
 
-    def build_graph(self, target_flight: str, origin: str, destination: str) -> Data:
+    def _resolve_icao(self, iata_code: str) -> Optional[str]:
+        iata = (iata_code or "").strip().upper()
+        if not iata:
+            return None
+        if iata in self.iata_to_icao:
+            return self.iata_to_icao[iata]
+        info = self.aeroapi.get_airport_info(iata)
+        if info and info.icao:
+            return info.icao
+        return None
+
+    def build_graph(
+        self,
+        target_flight: str,
+        origin_iata: str,
+        destination_iata: str,
+        *,
+        airports: Optional[Sequence[str]] = None,
+        origin_lat: Optional[float] = None,
+        origin_lon: Optional[float] = None,
+        airline_prefixes: Optional[Sequence[str]] = None,
+    ) -> Tuple[Data, Dict[str, Any]]:
         """
-        Constructs a PyTorch Geometric Data object representing the current state of the aviation network.
-        Now uses live Data Fusion from OpenSky, AeroAPI, and CheckWX.
+        Returns (PyG Data, ctx dict) where ctx contains mappings + raw METAR/congestion used.
         """
-        num_nodes = len(self.airports)
-        
-        # --- 1. Node Features (Data Fusion) ---
+        origin_iata = (origin_iata or "").strip().upper()
+        destination_iata = (destination_iata or "").strip().upper()
+
+        airports_list = _uniq_preserve(list(airports) if airports else list(self.base_airports))
+        if origin_iata:
+            airports_list = _uniq_preserve(airports_list + [origin_iata])
+        if destination_iata:
+            airports_list = _uniq_preserve(airports_list + [destination_iata])
+
+        airport_to_idx = {code: i for i, code in enumerate(airports_list)}
+
+        # --- Node Features ---
         # Features: [Congestion (0-1), Visibility (norm), Wind (norm), Flight Category (ordinal)]
-        node_features = []
-        
-        # Flight Category Mapping: VFR=0, MVFR=0.33, IFR=0.66, LIFR=1.0 (Higher is worse)
         cat_map = {"VFR": 0.0, "MVFR": 0.33, "IFR": 0.66, "LIFR": 1.0}
-        
-        for code in self.airports:
-            # API Calls (Live or Stubbed if key missing)
-            congestion = self.aeroapi.get_gate_congestion(code) # Already 0-1
-            
-            # CheckWX requires ICAO
-            icao = self.iata_to_icao.get(code, code)
-            weather = self.checkwx.get_metar_data(icao)
-            
-            # Feature Scaling / Normalization
-            vis_norm = min(weather.get('visibility_miles', 10) / 10.0, 1.0)
-            wind_norm = min(weather.get('wind_speed_kts', 0) / 50.0, 1.0)
-            cat_val = cat_map.get(weather.get('flight_category', 'VFR'), 0.0)
-            # Ceiling is nice to have but we'll stick to 4 dims for now or add it? 
-            # Model expects 4 dims based on initialization in main.py. 
-            
-            feat = [congestion, vis_norm, wind_norm, cat_val]
-            node_features.append(feat)
-            
+
+        metar_by_iata: Dict[str, Dict[str, Any]] = {}
+        congestion_by_iata: Dict[str, float] = {}
+        node_features: List[List[float]] = []
+
+        for iata in airports_list:
+            icao = self._resolve_icao(iata) or iata  # last resort: pass through
+            metar = self.checkwx.get_metar_data(icao) or {}
+            metar_by_iata[iata] = metar
+
+            # Prefer ICAO for AeroAPI if we have it; fall back to IATA.
+            congestion = float(self.aeroapi.get_gate_congestion(icao or iata))
+            congestion_by_iata[iata] = congestion
+
+            vis_norm = _clamp(float(metar.get("visibility_miles", 10.0) or 10.0) / 10.0, 0.0, 1.0)
+            wind_norm = _clamp(float(metar.get("wind_speed_kts", 0.0) or 0.0) / 50.0, 0.0, 1.0)
+            cat_val = float(cat_map.get(str(metar.get("flight_category", "VFR")).upper(), 0.0))
+
+            node_features.append([congestion, vis_norm, wind_norm, cat_val])
+
         x = torch.tensor(node_features, dtype=torch.float)
-        
-        # --- 2. Edge Index & Features (OpenSky Integration) ---
-        # We define edges dynamically based on active flight routes found by OpenSky
-        
-        src_nodes = []
-        dst_nodes = []
-        edge_attrs = []
-        
-        # For the MVP, we focus on the central hub (ORD/Origin) and see what's coming in
-        if origin in self.airport_to_idx:
-            origin_idx = self.airport_to_idx[origin]
-            
-            # Get actual incoming flights for United (UAL) AND American (AAL) as requested
-            # Note: get_incoming_aircraft_distance in api_clients.py currently takes one airline.
-            # We will make two calls or modify the client. Making two calls is safer for now.
-            incoming_ual = self.opensky.get_incoming_aircraft_distance(origin, "UAL")
-            incoming_aal = self.opensky.get_incoming_aircraft_distance(origin, "AAL")
-            incoming_flights = incoming_ual + incoming_aal
-            
-            # If we find live flights, they form edges into the origin
-            # For this MVP graph, since we don't have the full "Previous Airport" of every live plane,
-            # we simply connect them from a "Neighbor" node or self-loops to represent traffic volume.
-            
-            for other_code, other_idx in self.airport_to_idx.items():
-                if other_code == origin: continue
-                
-                # Heuristic: If we don't have full route info from OpenSky free tier, 
-                # we assume some traffic from major hubs exists.
-                
-                # Feature: Distance between airports (static) + Active Flights (dynamic)
-                # Here we mock the number of active flights on this route based on the 'incoming_flights' pool size
-                # This is a proxy for "Incoming Flow"
-                active_traffic_proxy = len(incoming_flights) / 50.0 # Normalize count
-                
+
+        # --- Edge Index & (optional) edge_attr ---
+        src_nodes: List[int] = []
+        dst_nodes: List[int] = []
+        edge_attrs: List[List[float]] = []
+
+        incoming_count = 0
+        prefixes = [p.strip().upper() for p in (airline_prefixes or []) if p and p.strip()]
+        if not prefixes:
+            prefixes = ["UAL", "AAL"]  # default heuristic
+
+        # Traffic proxy around the true origin airport (if we have lat/lon).
+        for pref in prefixes:
+            incoming = self.opensky.get_incoming_aircraft_distance(
+                origin_iata or "ORD",
+                pref,
+                airport_lat=origin_lat,
+                airport_lon=origin_lon,
+            )
+            incoming_count += len(incoming or [])
+
+        traffic_proxy = _clamp(incoming_count / 30.0, 0.0, 1.0)
+
+        if origin_iata in airport_to_idx:
+            origin_idx = airport_to_idx[origin_iata]
+            for other_iata, other_idx in airport_to_idx.items():
+                if other_iata == origin_iata:
+                    continue
                 src_nodes.append(other_idx)
                 dst_nodes.append(origin_idx)
-                edge_attrs.append([active_traffic_proxy])
-                
-        # Ensure at least the target flight path exists
-        if origin in self.airport_to_idx and destination in self.airport_to_idx:
-            src = self.airport_to_idx[origin]
-            dst = self.airport_to_idx[destination]
-            src_nodes.append(src)
-            dst_nodes.append(dst)
-            edge_attrs.append([0.5]) # Average load
-                    
+                edge_attrs.append([traffic_proxy])
+
+        # Ensure target flight path edge exists
+        if origin_iata in airport_to_idx and destination_iata in airport_to_idx:
+            src_nodes.append(airport_to_idx[origin_iata])
+            dst_nodes.append(airport_to_idx[destination_iata])
+            edge_attrs.append([max(0.1, traffic_proxy)])
+
         edge_index = torch.tensor([src_nodes, dst_nodes], dtype=torch.long)
         edge_attr = torch.tensor(edge_attrs, dtype=torch.float)
-        
-        # Resizing fix if no edges found (rare)
-        if edge_index.numel() == 0:
-             edge_index = torch.empty((2, 0), dtype=torch.long)
-             edge_attr = torch.empty((0, 1), dtype=torch.float)
-        
-        return Data(x=x, edge_index=edge_index, edge_attr=edge_attr, num_nodes=num_nodes)
 
-    def get_prediction_for_flight(self, flight_number: str, model) -> Dict:
+        if edge_index.numel() == 0:
+            edge_index = torch.empty((2, 0), dtype=torch.long)
+            edge_attr = torch.empty((0, 1), dtype=torch.float)
+
+        data = Data(x=x, edge_index=edge_index, edge_attr=edge_attr, num_nodes=len(airports_list))
+        ctx = {
+            "airports": airports_list,
+            "airport_to_idx": airport_to_idx,
+            "metar_by_iata": metar_by_iata,
+            "congestion_by_iata": congestion_by_iata,
+            "traffic_proxy": traffic_proxy,
+        }
+        return data, ctx
+
+    def get_prediction_for_flight(self, flight_number: str, model) -> Dict[str, Any]:
         """
-        Runs the full pipeline: Fetch Data -> Build Graph -> Run Model -> Return Result
+        Full pipeline (P1):
+        1) Resolve live flight metadata (AeroAPI)
+        2) Build graph using the live route (origin/destination)
+        3) Run model inference
+        4) Return a frontend-friendly response
         """
-        # 1. Resolve Flight Metadata (Mock for now, would typically come from AeroAPI)
-        origin = 'ORD'
-        destination = 'LHR'
-        
-        # 2. Build Graph
-        # print("Building Aviation Graph...")
-        data = self.build_graph(flight_number, origin, destination)
-        
-        # 3. Run Inference
+        flight_number = (flight_number or "").strip().upper()
+        if not flight_number:
+            return {"error": "INVALID_FLIGHT", "detail": "Flight number is required.", "_status_code": 400}
+
+        real_status = self.aeroapi.get_flight_status(flight_number)
+        if isinstance(real_status, dict) and real_status.get("error"):
+            code = str(real_status.get("error"))
+            status_code = 429 if code == "API_QUOTA_EXCEEDED" else 503
+            return {**real_status, "_status_code": status_code}
+
+        origin = ((real_status.get("origin") or {}).get("code") or "").strip().upper()
+        destination = ((real_status.get("destination") or {}).get("code") or "").strip().upper()
+        if not origin or not destination:
+            return {
+                "error": "FLIGHT_NOT_FOUND",
+                "detail": f"No live route data available for {flight_number}. The flight may be outside the live tracking window.",
+                "_status_code": 404,
+            }
+
+        # Airline prefix for OpenSky callsign filtering (best effort)
+        prefixes: List[str] = []
+        operator_icao = (real_status.get("operator_icao") or "").strip().upper()
+        if len(operator_icao) == 3:
+            prefixes.append(operator_icao)
+
+        # Airport lat/lon for OpenSky bbox (best effort)
+        origin_info = self.aeroapi.get_airport_info(origin)
+        origin_lat = origin_info.latitude if origin_info else None
+        origin_lon = origin_info.longitude if origin_info else None
+
+        airports = _uniq_preserve(list(self.base_airports) + [origin, destination])
+
+        data, ctx = self.build_graph(
+            flight_number,
+            origin,
+            destination,
+            airports=airports,
+            origin_lat=origin_lat,
+            origin_lon=origin_lon,
+            airline_prefixes=prefixes,
+        )
+
         model.eval()
         with torch.no_grad():
             out = model(data.x, data.edge_index)
-            
-        # Extract prediction for the destination node (representing arrival delay)
-        dest_idx = self.airport_to_idx.get(destination, 0)
-        predicted_delay_timesteps = out[dest_idx].item()
-        
-        # Convert abstract model output to minutes (scaling factor)
-        predicted_delay_minutes = max(0, int(predicted_delay_timesteps * 100))
-        
-        # Get Real Status from AeroAPI (or stub)
-        real_status = self.aeroapi.get_flight_status(flight_number)
-        
-        # Check for explicit API errors (e.g. Quota Limit)
-        if real_status.get("error"):
-             return {
-                 "error": real_status["error"],
-                 "detail": real_status.get("detail", "External API Error")
-             }
-        
-        # Validation: If flight not found in live window, DO NOT use MVP defaults.
-        if not real_status or not real_status.get('origin'):
-             return {
-                 "error": "Flight Not Found",
-                 "detail": f"Simulation data unavailable for {flight_number}. Flight is likely outside the live tracking window."
-             }
 
-        origin = real_status.get('origin', {}).get('code', origin)
-        destination = real_status.get('destination', {}).get('code', destination)
-        note = "Live Route Data"
+        dest_idx = ctx["airport_to_idx"].get(destination, 0)
+        raw_pred = float(out[dest_idx].item())
+        scale = float(os.environ.get("STGNN_OUTPUT_SCALE", "100") or 100.0)
+        predicted_delay_minutes = max(0, int(raw_pred * scale))
 
-        # --- Live Position Tracking (AeroAPI) ---
-        position_data = self.aeroapi.get_flight_position(flight_number)
-        live_lat = position_data.get('latitude')
-        live_lon = position_data.get('longitude')
-        live_heading = position_data.get('heading')
-        live_alt = position_data.get('altitude')
+        # Live position (best effort)
+        position_data = self.aeroapi.get_flight_position(flight_number) or {}
+        live_lat = position_data.get("latitude")
+        live_lon = position_data.get("longitude")
+        live_heading = position_data.get("heading")
+        live_alt = position_data.get("altitude")
 
-        # --- Data Extraction for Detailed Cards ---
-        terminal_origin = real_status.get('terminal_origin', '-') or '-'
-        gate_origin = real_status.get('gate_origin', '-') or '-'
-        terminal_dest = real_status.get('terminal_destination', '-') or '-'
-        gate_dest = real_status.get('gate_destination', '-') or '-'
-        baggage = real_status.get('baggage_claim', '-') or '-'
+        # Terminals / gates
+        terminal_origin = real_status.get("terminal_origin", "-") or "-"
+        gate_origin = real_status.get("gate_origin", "-") or "-"
+        terminal_dest = real_status.get("terminal_destination", "-") or "-"
+        gate_dest = real_status.get("gate_destination", "-") or "-"
+        baggage = real_status.get("baggage_claim", "-") or "-"
 
-        # Time Helper
-        def fmt_time(iso_str):
-            if not iso_str: return None
-            try:
-                dt = datetime.fromisoformat(iso_str.replace('Z', '+00:00'))
-                return dt.strftime("%H:%M")
-            except:
-                return None
+        # Times
+        scheduled_out_raw = real_status.get("scheduled_out")
+        actual_out_raw = real_status.get("actual_out")
+        estimated_out_raw = real_status.get("estimated_out")
 
-        scheduled_out_raw = real_status.get('scheduled_out')
-        actual_out_raw = real_status.get('actual_out')
-        estimated_out_raw = real_status.get('estimated_out')
-        
-        scheduled_in_raw = real_status.get('scheduled_in')
-        actual_in_raw = real_status.get('actual_in')
-        estimated_in_raw = real_status.get('estimated_in')
+        scheduled_in_raw = real_status.get("scheduled_in")
+        actual_in_raw = real_status.get("actual_in")
+        estimated_in_raw = real_status.get("estimated_in")
 
-        sched_dep = fmt_time(scheduled_out_raw) or "TBD"
-        actual_dep = fmt_time(actual_out_raw) or fmt_time(estimated_out_raw) or "TBD"
-        
-        sched_arr = fmt_time(scheduled_in_raw) or "TBD"
-        actual_arr = fmt_time(actual_in_raw) or fmt_time(estimated_in_raw) or "TBD"
+        sched_dep = _fmt_time(scheduled_out_raw) or "TBD"
+        actual_dep = _fmt_time(actual_out_raw) or _fmt_time(estimated_out_raw) or "TBD"
 
-        # Logic for "Early/On Time/Delayed" Badge
+        sched_arr = _fmt_time(scheduled_in_raw) or "TBD"
+        actual_arr = _fmt_time(actual_in_raw) or _fmt_time(estimated_in_raw) or "TBD"
+
+        # Status badge (hybrid: cancellation from API, delay from model)
+        cancelled = bool(real_status.get("cancelled") or str(real_status.get("status", "")).lower() == "cancelled")
         status_text = "On Time"
-        if predicted_delay_minutes > 15:
+        if cancelled:
+            status_text = "Cancelled"
+        elif predicted_delay_minutes > 15:
             status_text = "Delayed"
-        elif predicted_delay_minutes == 0:
-             status_text = "Early" if (actual_out_raw and actual_out_raw < scheduled_out_raw) else "On Time"
+        elif predicted_delay_minutes == 0 and actual_out_raw and scheduled_out_raw and str(actual_out_raw) < str(scheduled_out_raw):
+            status_text = "Early"
+
+        # METAR → UI widgets
+        metar_o = (ctx["metar_by_iata"].get(origin) or {})
+        metar_d = (ctx["metar_by_iata"].get(destination) or {})
+
+        def metar_widget(metar: Dict[str, Any]) -> Dict[str, Any]:
+            cat = str(metar.get("flight_category", "VFR"))
+            return {
+                "temp": int(metar.get("temp_f") or 0),
+                "condition": _category_to_condition(cat),
+                "windSpeed": int(float(metar.get("wind_speed_kts", 0) or 0)),
+                "visibility": f"{int(float(metar.get('visibility_miles', 10) or 10))} mi",
+            }
+
+        weather_origin = metar_widget(metar_o)
+        weather_dest = metar_widget(metar_d)
+
+        congestion_origin = float(ctx["congestion_by_iata"].get(origin, 0.0) or 0.0)
+        traffic_proxy = float(ctx.get("traffic_proxy", 0.0) or 0.0)
+
+        # Heuristic risk aggregation (explicitly heuristic until P2 model calibration exists)
+        cat_map = {"VFR": 0.0, "MVFR": 0.33, "IFR": 0.66, "LIFR": 1.0}
+        weather_sev = max(
+            float(cat_map.get(str(metar_o.get("flight_category", "VFR")).upper(), 0.0)),
+            _clamp(float(metar_o.get("wind_speed_kts", 0.0) or 0.0) / 50.0, 0.0, 1.0),
+        )
+        propagation_risk = int(_clamp(0.5 * weather_sev + 0.3 * traffic_proxy + 0.2 * congestion_origin, 0.0, 1.0) * 100)
+
+        delay_probability = int(_clamp((predicted_delay_minutes / 120.0), 0.0, 1.0) * 90 + 5)
+
+        incoming_aircraft_status = "In Air"
+        try:
+            if live_alt is not None and float(live_alt) <= 0:
+                incoming_aircraft_status = "Landed"
+        except Exception:
+            incoming_aircraft_status = "In Air"
+
+        airline = (
+            (real_status.get("operator") or "").strip()
+            or (real_status.get("operator_iata") or "").strip()
+            or (real_status.get("operator_icao") or "").strip()
+            or "Unknown Airline"
+        )
 
         return {
             "flightNumber": flight_number,
@@ -211,13 +345,13 @@ class AviationGraphHandler:
             "destination": destination,
             "status": status_text,
             "predictedDelayMinutes": predicted_delay_minutes,
-            
+
             # Times
             "scheduledDep": sched_dep,
             "actualDep": actual_dep,
+            "predictedTakeoff": actual_dep,
             "scheduledArr": sched_arr,
             "actualArr": actual_arr,
-            "predictedTakeoff": actual_dep, # Rename or keep specific usage
 
             # Gate/Terminal
             "terminalOrigin": terminal_origin,
@@ -226,25 +360,29 @@ class AviationGraphHandler:
             "gateDest": gate_dest,
             "baggageClaim": baggage,
 
-            "delayProbability": min(99, int(predicted_delay_minutes / 2) + 10),
-            "networkCongestion": int(data.x[self.airport_to_idx.get(origin, 0)][0] * 100),
-            "propagationRisk": int(data.x[self.airport_to_idx.get(origin, 0)][2] * 100),
-            "note": note,
-            "airline": "United Airlines", # TODO: Extract carrier
-            "weatherOrigin": {
-                 "temp": 15, 
-                 "condition": "Cloudy", # TODO: Map from data.x category
-                 "windSpeed": int(data.x[self.airport_to_idx.get(origin, 0)][2] * 50),
-                 "visibility": f"{int(data.x[self.airport_to_idx.get(origin, 0)][1] * 10)}mi"
-            },
-            "weatherDest": {
-                 "temp": 10, "condition": "Rain", "windSpeed": 18, "visibility": "5km"
-            },
-            "incomingAircraftStatus": "In Air",
+            # Heuristic fields (until a calibrated P2 model exists)
+            "delayProbability": delay_probability,
+            "networkCongestion": int(congestion_origin * 100),
+            "propagationRisk": propagation_risk,
+            "incomingAircraftStatus": incoming_aircraft_status,
+
+            "note": "Live route data. Probability/risk fields are heuristics until model calibration (P2).",
+            "airline": airline,
+
+            "weatherOrigin": weather_origin,
+            "weatherDest": weather_dest,
+
             "livePosition": {
                 "lat": live_lat,
                 "lon": live_lon,
                 "heading": live_heading,
-                "altitude": live_alt
-            } if live_lat else None
+                "altitude": live_alt,
+            }
+            if live_lat is not None and live_lon is not None
+            else None,
+            "sources": [
+                {"title": "FlightAware AeroAPI", "uri": "https://flightaware.com/commercial/aeroapi/"},
+                {"title": "OpenSky Network", "uri": "https://opensky-network.org/"},
+                {"title": "CheckWX", "uri": "https://www.checkwxapi.com/"},
+            ],
         }

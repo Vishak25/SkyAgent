@@ -12,6 +12,15 @@ dist
 dist-ssr
 *.local
 .env
+.env.*
+!.env.example
+
+# Angular/Vite caches
+.angular
+.angular/
+
+# Secrets / local credentials
+credentials.json
 
 # Editor directories and files
 .vscode/*
@@ -23,3 +32,13 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Python
+__pycache__/
+*.py[cod]
+.pycache/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
