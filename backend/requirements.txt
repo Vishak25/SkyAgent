@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+torch
+torch-geometric
+numpy
+pandas
+requests
+openmeteo-requests
+requests-cache
+retry-requests

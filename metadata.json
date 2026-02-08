@@ -1,0 +1,5 @@
+{
+  "name": "SkyCast: AI Flight Predictor",
+  "description": "A SOTA Spatio-Temporal Graph Neural Network dashboard that predicts flight delays using real-time weather, airport network congestion, and incoming aircraft tracking.",
+  "requestFramePermissions": []
+}
