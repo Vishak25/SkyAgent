@@ -43,19 +43,21 @@ graph TD
 *   API Keys: OpenSky (Account), FlightAware (Free Tier), CheckWX (Free Tier).
 
 ### 1. Backend Setup
-1.  Navigate to `backend/`:
+1.  Create & activate the shared virtualenv (from the project root):
+    ```bash
+    python3 -m venv .venv
+    source .venv/bin/activate
+    ```
+2.  Navigate to `backend/`:
     ```bash
     cd backend
     ```
-2.  Install dependencies:
+3.  Install dependencies:
     ```bash
-    # Option A (pinned direct deps)
-    pip install -r requirements.txt
-
-    # Option B (fully pinned lockfile)
-    # pip install -r requirements.lock
+    # Fully pinned backend dependencies
+    pip install -r requirements.lock
     ```
-3.  Create `.env` file (start from `backend/.env.example`):
+4.  Create `.env` file (start from `backend/.env.example`):
     ```env
     # OpenSky OAuth2 Client Credentials (client_id / client_secret)
     OPENSKY_USER=your_client_id
@@ -63,7 +65,7 @@ graph TD
     FLIGHTAWARE_API_KEY=your_key
     CHECKWX_API_KEY=your_key
     ```
-4.  Run the server:
+5.  Run the server:
     ```bash
     python3 -m uvicorn main:app --host 0.0.0.0 --port 8000
     ```
@@ -82,6 +84,19 @@ graph TD
     npm run dev
     ```
 4.  Open `http://localhost:3000`.
+
+### 3. Install Historical Weather Dataset (Recommended)
+For training/evaluation beyond live API responses, install historical METAR from Iowa Environmental Mesonet (IEM):
+
+```bash
+# From repository root
+python3 backend/scripts/install_iem_metar.py \
+  --days-back 30 \
+  --stations KORD,KJFK,EGLL,KLAX,OMDB,RJTT,LFPG,EHAM,EDDF,WSSS \
+  --output backend/data/raw/iem_metar_30d.csv
+```
+
+This creates a join-friendly CSV keyed by `station` and `valid` (UTC timestamp), saved under `backend/data/raw/`.
 
 ## ✅ Validation Status
 *   **APIs:** Connected & Verified. (Note: AeroAPI Free Tier limits may trigger "Quota Exceeded").

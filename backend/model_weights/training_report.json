@@ -1,0 +1,51 @@
+{
+  "dataset": "data/raw/iem_metar_30d.csv",
+  "dataset_stats": {
+    "total_snapshots": 720,
+    "num_airports": 10,
+    "airports": [
+      "AMS",
+      "CDG",
+      "DXB",
+      "FRA",
+      "HND",
+      "JFK",
+      "LAX",
+      "LHR",
+      "ORD",
+      "SIN"
+    ],
+    "num_edges": 44,
+    "delay_mean": 5.942849159240723,
+    "delay_std": 11.018721580505371,
+    "delay_median": 2.300865650177002,
+    "delay_max": 107.41722869873047,
+    "delay_min": 0.042371973395347595,
+    "pct_nonzero_delay": 91.83333587646484
+  },
+  "model": {
+    "in_channels": 5,
+    "hidden_channels": 32,
+    "out_channels": 1,
+    "parameters": 1793
+  },
+  "training": {
+    "epochs_run": 300,
+    "best_epoch": 296,
+    "best_val_mae": 3.2157157489231656,
+    "elapsed_seconds": 9.781785249710083,
+    "lr": 0.003,
+    "batch_size": 16,
+    "patience": 50,
+    "seed": 42
+  },
+  "test_metrics": {
+    "mae": 4.644702911376953,
+    "rmse": 9.705878257751465,
+    "r2": 0.3789242013864116,
+    "within_15min_pct": 90.55555555555556,
+    "within_30min_pct": 97.12962962962963,
+    "delay_recall_pct": 44.91525423728814,
+    "delay_precision_pct": 54.63917525773196
+  }
+}

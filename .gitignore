@@ -42,3 +42,8 @@ __pycache__/
 .ruff_cache/
 .venv/
 venv/
+
+# Downloaded datasets
+backend/data/raw/*.csv
+backend/data/raw/*.parquet
+backend/data/raw/*.json

@@ -2,164 +2,288 @@
 import { Component, ElementRef, ViewChild, effect, input, OnDestroy, AfterViewInit } from '@angular/core';
 import * as d3 from 'd3';
 
+export interface GraphNode {
+  id: string;
+  role: 'origin' | 'destination' | 'hub';
+  risk: number;        // 0-1
+  predictedDelay: number;
+  congestion: number;
+  precipSeverity: number;
+  condition: string;
+  wind: number;
+  visibility: number;
+  lat: number | null;
+  lon: number | null;
+}
+
+export interface GraphEdge {
+  source: string;
+  target: string;
+  type: 'flight' | 'inbound' | 'network';
+}
+
+export interface GraphData {
+  nodes: GraphNode[];
+  edges: GraphEdge[];
+}
+
 @Component({
   selector: 'app-network-graph',
   standalone: true,
   template: `
     <div class="w-full h-full min-h-[300px] relative bg-slate-900/50 rounded-xl overflow-hidden border border-slate-700/50">
       <div #graphContainer class="w-full h-full absolute inset-0"></div>
-      <div class="absolute top-4 left-4 text-xs font-mono text-slate-400 bg-slate-900/80 p-2 rounded border border-slate-700">
-        <div class="flex items-center gap-2 mb-1"><span class="w-2 h-2 rounded-full bg-blue-500"></span> Normal Node</div>
-        <div class="flex items-center gap-2 mb-1"><span class="w-2 h-2 rounded-full bg-red-500"></span> High Delay Risk</div>
-        <div class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-yellow-500"></span> Propagation Path</div>
+      <div class="absolute top-3 left-3 text-[10px] font-mono text-slate-500 bg-slate-900/90 px-2 py-1.5 rounded border border-slate-700/50 space-y-1">
+        <div class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-cyan-400"></span> Origin</div>
+        <div class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-emerald-400"></span> Destination</div>
+        <div class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-slate-500"></span> Hub (low risk)</div>
+        <div class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-rose-500"></span> Hub (high risk)</div>
+        <div class="flex items-center gap-1.5"><span class="w-3 h-[2px] bg-cyan-400"></span> Flight path</div>
+        <div class="flex items-center gap-1.5"><span class="w-3 h-[2px] bg-slate-600"></span> Network edge</div>
       </div>
     </div>
   `
 })
 export class NetworkGraphComponent implements OnDestroy, AfterViewInit {
-  riskLevel = input.required<number>(); // 0-100
+  graphData = input.required<GraphData | null>();
   @ViewChild('graphContainer') graphContainer!: ElementRef;
 
-  private simulation: any;
+  private resizeObserver: ResizeObserver | null = null;
 
   constructor() {
     effect(() => {
-      const risk = this.riskLevel();
-      if (this.graphContainer) {
-        this.renderGraph(risk);
+      const data = this.graphData();
+      if (this.graphContainer && data) {
+        this.renderGraph(data);
       }
     });
   }
 
   ngAfterViewInit() {
-    // Ensure graph renders even if effect ran before view init
-    this.renderGraph(this.riskLevel());
+    const data = this.graphData();
+    if (data) {
+      this.renderGraph(data);
+    }
+    // Re-render on resize
+    this.resizeObserver = new ResizeObserver(() => {
+      const d = this.graphData();
+      if (d) this.renderGraph(d);
+    });
+    this.resizeObserver.observe(this.graphContainer.nativeElement);
   }
 
   ngOnDestroy() {
-    if (this.simulation) this.simulation.stop();
+    if (this.resizeObserver) this.resizeObserver.disconnect();
   }
 
-  private renderGraph(risk: number) {
+  private renderGraph(graphData: GraphData) {
     if (!this.graphContainer) return;
-    const element = this.graphContainer.nativeElement;
+    const el = this.graphContainer.nativeElement;
 
-    // Debug logging
-    console.log('Rendering Graph with Risk:', risk);
-    console.log('Container Dimensions:', element.clientWidth, element.clientHeight);
+    d3.select(el).selectAll('*').remove();
 
-    d3.select(element).selectAll('*').remove();
+    const width = el.clientWidth || 400;
+    const height = el.clientHeight || 300;
+    const pad = 30;
 
-    // Fix: Fallback dimensions if container is 0 height
-    const width = element.clientWidth || 400;
-    const height = element.clientHeight || 300;
-
-    const svg = d3.select(element)
+    const svg = d3.select(el)
       .append('svg')
       .attr('width', '100%')
       .attr('height', '100%')
       .attr('viewBox', `0 0 ${width} ${height}`);
 
-    // Simplified US hub network
-    const nodes = [
-      { id: 'ORD', x: width * 0.5, y: height * 0.4, type: 'hub' }, // Origin
-      { id: 'IAD', x: width * 0.8, y: height * 0.5, type: 'dest' }, // Dest
-      { id: 'SFO', x: width * 0.1, y: height * 0.4, type: 'hub' },
-      { id: 'DEN', x: width * 0.3, y: height * 0.5, type: 'hub' },
-      { id: 'DFW', x: width * 0.45, y: height * 0.7, type: 'hub' },
-      { id: 'ATL', x: width * 0.7, y: height * 0.7, type: 'hub' },
-      { id: 'JFK', x: width * 0.85, y: height * 0.35, type: 'hub' }
-    ];
+    // Defs for arrowheads and gradients
+    const defs = svg.append('defs');
 
-    const links = [
-      { source: 'SFO', target: 'DEN' },
-      { source: 'DEN', target: 'ORD' }, // Propagation path to origin
-      { source: 'ORD', target: 'IAD' }, // The flight
-      { source: 'ORD', target: 'DFW' },
-      { source: 'ORD', target: 'ATL' },
-      { source: 'ORD', target: 'JFK' },
-      { source: 'DFW', target: 'ATL' },
-      { source: 'ATL', target: 'IAD' }
-    ];
+    // Glow filter for origin/destination
+    const glow = defs.append('filter').attr('id', 'glow');
+    glow.append('feGaussianBlur').attr('stdDeviation', '3').attr('result', 'blur');
+    glow.append('feMerge')
+      .selectAll('feMergeNode')
+      .data(['blur', 'SourceGraphic'])
+      .join('feMergeNode')
+      .attr('in', (d: string) => d);
 
-    const isHighRisk = risk > 50;
+    const { nodes, edges } = graphData;
+    if (!nodes.length) return;
 
-    // Simulation
-    this.simulation = d3.forceSimulation(nodes as any)
-      .force('link', d3.forceLink(links).id((d: any) => d.id).distance(80))
-      .force('charge', d3.forceManyBody().strength(-200))
-      .force('center', d3.forceCenter(width / 2, height / 2))
-      .on('tick', ticked);
+    // Position nodes using lat/lon if available, otherwise force layout
+    const hasGeo = nodes.filter(n => n.lat != null && n.lon != null).length > nodes.length * 0.5;
 
-    // Draw Links
-    const link = svg.append('g')
-      .attr('stroke', '#475569')
-      .selectAll('line')
-      .data(links)
-      .join('line')
-      .attr('stroke-width', (d) => (d.source === 'ORD' && d.target === 'IAD') ? 3 : 1)
-      .attr('stroke', (d) => {
-        if (isHighRisk && d.source === 'DEN' && d.target === 'ORD') return '#f59e0b'; // Propagation source
-        if (isHighRisk && d.source === 'ORD' && d.target === 'IAD') return '#ef4444'; // The flight impacted
-        return '#334155';
+    type PosNode = GraphNode & { x: number; y: number };
+    let posNodes: PosNode[];
+
+    if (hasGeo) {
+      // Project lat/lon onto the SVG with a simple Mercator-like mapping
+      const lats = nodes.filter(n => n.lat != null).map(n => n.lat!);
+      const lons = nodes.filter(n => n.lon != null).map(n => n.lon!);
+      const minLat = Math.min(...lats), maxLat = Math.max(...lats);
+      const minLon = Math.min(...lons), maxLon = Math.max(...lons);
+      const latRange = Math.max(maxLat - minLat, 5);
+      const lonRange = Math.max(maxLon - minLon, 5);
+
+      posNodes = nodes.map(n => {
+        const lat = n.lat ?? (minLat + latRange / 2);
+        const lon = n.lon ?? (minLon + lonRange / 2);
+        return {
+          ...n,
+          x: pad + ((lon - minLon) / lonRange) * (width - 2 * pad),
+          y: pad + ((maxLat - lat) / latRange) * (height - 2 * pad), // invert Y
+        };
       });
+    } else {
+      // Fallback: circular layout
+      const cx = width / 2, cy = height / 2;
+      const r = Math.min(width, height) / 2 - pad - 20;
+      // Put origin/dest in prominent positions
+      const originNode = nodes.find(n => n.role === 'origin');
+      const destNode = nodes.find(n => n.role === 'destination');
+      const hubs = nodes.filter(n => n.role === 'hub');
 
-    // Draw Nodes
-    const node = svg.append('g')
-      .selectAll('circle')
-      .data(nodes)
-      .join('g');
-
-    node.append('circle')
-      .attr('r', (d) => d.id === 'ORD' || d.id === 'IAD' ? 12 : 6)
-      .attr('fill', (d) => {
-        if (d.id === 'ORD') return isHighRisk ? '#ef4444' : '#3b82f6';
-        if (d.id === 'IAD') return '#10b981';
-        if (isHighRisk && d.id === 'DEN') return '#f59e0b'; // Problem source
-        return '#64748b';
-      })
-      .attr('stroke', '#1e293b')
-      .attr('stroke-width', 2);
-
-    // Add pulse animation for delayed nodes
-    if (isHighRisk) {
-      node.filter((d: any) => d.id === 'ORD')
-        .append('circle')
-        .attr('r', 12)
-        .attr('fill', 'none')
-        .attr('stroke', '#ef4444')
-        .attr('stroke-width', 2)
-        .append('animate')
-        .attr('attributeName', 'r')
-        .attr('from', 12)
-        .attr('to', 24)
-        .attr('dur', '1.5s')
-        .attr('repeatCount', 'indefinite')
-        .select(function () { return this.parentNode; }) // Go back to circle
-        .append('animate')
-        .attr('attributeName', 'opacity')
-        .attr('from', 1)
-        .attr('to', 0)
-        .attr('dur', '1.5s')
-        .attr('repeatCount', 'indefinite');
+      posNodes = [];
+      if (originNode) posNodes.push({ ...originNode, x: cx - r * 0.6, y: cy });
+      if (destNode) posNodes.push({ ...destNode, x: cx + r * 0.6, y: cy });
+      hubs.forEach((n, i) => {
+        const angle = (i / hubs.length) * Math.PI * 2 - Math.PI / 2;
+        posNodes.push({ ...n, x: cx + Math.cos(angle) * r, y: cy + Math.sin(angle) * r });
+      });
     }
 
-    node.append('text')
-      .text((d: any) => d.id)
-      .attr('x', 15)
-      .attr('y', 4)
-      .attr('fill', '#cbd5e1')
-      .attr('font-size', '10px')
-      .attr('font-weight', 'bold');
+    const nodeMap = new Map(posNodes.map(n => [n.id, n]));
 
-    function ticked() {
-      link
-        .attr('x1', (d: any) => d.source.x)
-        .attr('y1', (d: any) => d.source.y)
-        .attr('x2', (d: any) => d.target.x)
-        .attr('y2', (d: any) => d.target.y);
+    // --- Draw edges ---
+    const edgeGroup = svg.append('g');
 
-      node.attr('transform', (d: any) => `translate(${d.x},${d.y})`);
+    edges.forEach(e => {
+      const src = nodeMap.get(e.source);
+      const dst = nodeMap.get(e.target);
+      if (!src || !dst) return;
+
+      const isFlight = e.type === 'flight';
+      const isInbound = e.type === 'inbound';
+
+      edgeGroup.append('line')
+        .attr('x1', src.x).attr('y1', src.y)
+        .attr('x2', dst.x).attr('y2', dst.y)
+        .attr('stroke', isFlight ? '#22d3ee' : isInbound ? '#475569' : '#1e293b')
+        .attr('stroke-width', isFlight ? 2.5 : 0.8)
+        .attr('stroke-opacity', isFlight ? 0.9 : isInbound ? 0.4 : 0.15)
+        .attr('stroke-dasharray', isFlight ? 'none' : '3,3');
+    });
+
+    // Animated flight path
+    const flightEdge = edges.find(e => e.type === 'flight');
+    if (flightEdge) {
+      const src = nodeMap.get(flightEdge.source);
+      const dst = nodeMap.get(flightEdge.target);
+      if (src && dst) {
+        // Animated dot along flight path
+        const dot = svg.append('circle')
+          .attr('r', 3)
+          .attr('fill', '#22d3ee')
+          .attr('filter', 'url(#glow)');
+
+        function animateDot() {
+          dot.attr('cx', src!.x).attr('cy', src!.y)
+            .transition()
+            .duration(3000)
+            .ease(d3.easeLinear)
+            .attr('cx', dst!.x)
+            .attr('cy', dst!.y)
+            .on('end', animateDot);
+        }
+        animateDot();
+      }
     }
+
+    // --- Draw nodes ---
+    const nodeGroup = svg.append('g');
+
+    posNodes.forEach(n => {
+      const g = nodeGroup.append('g')
+        .attr('transform', `translate(${n.x}, ${n.y})`);
+
+      // Node size
+      const isEndpoint = n.role === 'origin' || n.role === 'destination';
+      const radius = isEndpoint ? 10 : 5 + n.risk * 4;
+
+      // Node color
+      let fill: string;
+      if (n.role === 'origin') fill = '#22d3ee';       // cyan
+      else if (n.role === 'destination') fill = '#34d399'; // emerald
+      else {
+        // Risk-based gradient: slate → amber → rose
+        if (n.risk < 0.3) fill = '#64748b';
+        else if (n.risk < 0.6) fill = '#f59e0b';
+        else fill = '#ef4444';
+      }
+
+      // Glow ring for endpoints
+      if (isEndpoint) {
+        g.append('circle')
+          .attr('r', radius + 4)
+          .attr('fill', 'none')
+          .attr('stroke', fill)
+          .attr('stroke-width', 1.5)
+          .attr('opacity', 0.4);
+      }
+
+      // Pulse ring for high-risk nodes
+      if (n.risk > 0.6) {
+        const pulse = g.append('circle')
+          .attr('r', radius)
+          .attr('fill', 'none')
+          .attr('stroke', '#ef4444')
+          .attr('stroke-width', 1.5);
+
+        pulse.append('animate')
+          .attr('attributeName', 'r')
+          .attr('from', radius)
+          .attr('to', radius + 12)
+          .attr('dur', '2s')
+          .attr('repeatCount', 'indefinite');
+        pulse.append('animate')
+          .attr('attributeName', 'opacity')
+          .attr('from', 0.8)
+          .attr('to', 0)
+          .attr('dur', '2s')
+          .attr('repeatCount', 'indefinite');
+      }
+
+      // Main circle
+      g.append('circle')
+        .attr('r', radius)
+        .attr('fill', fill)
+        .attr('stroke', '#0f172a')
+        .attr('stroke-width', 1.5)
+        .attr('filter', isEndpoint ? 'url(#glow)' : 'none');
+
+      // Label
+      const labelOffset = radius + 6;
+      g.append('text')
+        .text(n.id)
+        .attr('x', 0)
+        .attr('y', -labelOffset)
+        .attr('text-anchor', 'middle')
+        .attr('fill', isEndpoint ? '#e2e8f0' : '#94a3b8')
+        .attr('font-size', isEndpoint ? '11px' : '9px')
+        .attr('font-weight', isEndpoint ? 'bold' : 'normal')
+        .attr('font-family', 'monospace');
+
+      // Tooltip-style detail for origin/destination
+      if (isEndpoint) {
+        const detail = n.role === 'origin'
+          ? `${n.condition} · ${n.wind}kt`
+          : `Delay: ${n.predictedDelay.toFixed(0)}m`;
+        g.append('text')
+          .text(detail)
+          .attr('x', 0)
+          .attr('y', labelOffset + 10)
+          .attr('text-anchor', 'middle')
+          .attr('fill', '#64748b')
+          .attr('font-size', '8px')
+          .attr('font-family', 'monospace');
+      }
+    });
   }
 }

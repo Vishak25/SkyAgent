@@ -2,31 +2,53 @@
 import { Component, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { FlightPredictorService, FlightScenario } from './services/flight-predictor.service';
+import { FlightPredictorService, FlightScenario, RouteSuggestion } from './services/flight-predictor.service';
 import { FlightLegCardComponent } from './components/flight-leg-card.component';
 import { NetworkGraphComponent } from './components/network-graph.component';
 import { StatCardComponent } from './components/stat-card.component';
 import { WeatherWidgetComponent } from './components/weather-widget.component';
+import { ItineraryCardComponent } from './components/itinerary-card.component';
+
+type SearchMode = 'track' | 'suggest';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [CommonModule, FormsModule, NetworkGraphComponent, StatCardComponent, WeatherWidgetComponent, FlightLegCardComponent],
+  imports: [
+    CommonModule, FormsModule,
+    NetworkGraphComponent, StatCardComponent, WeatherWidgetComponent,
+    FlightLegCardComponent, ItineraryCardComponent,
+  ],
   templateUrl: './app.component.html'
 })
 export class AppComponent {
   private predictor = inject(FlightPredictorService);
 
-  // State
+  // Search mode
+  searchMode = signal<SearchMode>('track');
+
+  // Track mode state
   flightInput = signal<string>('');
   isLoading = signal<boolean>(false);
   flightData = signal<FlightScenario | null>(null);
   aiAnalysis = signal<string>('');
   errorMessage = signal<string>('');
 
-  constructor() {
-    this.trackFlight();
+  // Suggest mode state
+  originInput = signal<string>('');
+  destInput = signal<string>('');
+  dateInput = signal<string>('');
+  routeSuggestion = signal<RouteSuggestion | null>(null);
+  routeAnalysis = signal<string>('');
+
+  constructor() { }
+
+  setMode(mode: SearchMode) {
+    this.searchMode.set(mode);
+    this.errorMessage.set('');
   }
+
+  // --- Track mode ---
 
   async trackFlight() {
     if (!this.flightInput()) return;
@@ -35,17 +57,41 @@ export class AppComponent {
     this.errorMessage.set('');
     this.aiAnalysis.set('');
     this.flightData.set(null);
+    this.routeSuggestion.set(null);
 
     try {
-      // Fetch real data
       const data = await this.predictor.getFlightStatus(this.flightInput());
       this.flightData.set(data);
-
-      // Get AI explanation
       const explanation = await this.predictor.analyzeScenario(data);
       this.aiAnalysis.set(explanation);
     } catch (err: any) {
       this.errorMessage.set(err.message || 'Failed to fetch flight data.');
+    } finally {
+      this.isLoading.set(false);
+    }
+  }
+
+  // --- Suggest mode ---
+
+  async suggestRoutes() {
+    if (!this.originInput() || !this.destInput()) return;
+
+    this.isLoading.set(true);
+    this.errorMessage.set('');
+    this.routeAnalysis.set('');
+    this.routeSuggestion.set(null);
+    this.flightData.set(null);
+
+    try {
+      const data = await this.predictor.suggestRoutes(
+        this.originInput(), this.destInput(),
+        this.dateInput() || undefined
+      );
+      this.routeSuggestion.set(data);
+      const analysis = this.predictor.analyzeRoutes(data);
+      this.routeAnalysis.set(analysis);
+    } catch (err: any) {
+      this.errorMessage.set(err.message || 'Failed to suggest routes.');
     } finally {
       this.isLoading.set(false);
     }
