@@ -1,0 +1,195 @@
+{
+  "results": 1,
+  "data": [
+    {
+      "icao": "KORD",
+      "raw_text": "TAF KORD 032059Z 0321/0424 05007KT 6SM HZ OVC018 FM040200 04005KT 6SM BR FEW010 SCT250 FM041400 08010KT P6SM SCT015 BKN070 FM041800 09009KT P6SM SCT010 OVC018",
+      "issued": "2026-03-03T20:59:00Z",
+      "period": {
+        "from": "2026-03-03T21:00:00Z",
+        "to": "2026-03-05T00:00:00Z"
+      },
+      "report": {
+        "type": "TAF",
+        "status": "Forecast Report"
+      },
+      "station": {
+        "icao": "KORD",
+        "name": "Chicago O'Hare International Airport",
+        "geometry": {
+          "type": "Point",
+          "coordinates": [
+            -87.9048,
+            41.9786
+          ]
+        },
+        "location": "Chicago, Illinois, United States"
+      },
+      "forecast": [
+        {
+          "section": "0321/0424 05007KT 6SM HZ OVC018",
+          "change": {
+            "code": "INITIAL",
+            "period": {
+              "from": "2026-03-03T21:00:00Z",
+              "to": "2026-03-05T00:00:00Z"
+            },
+            "text": "Initial or prevailing forecast"
+          },
+          "clouds": [
+            {
+              "code": "OVC",
+              "feet": 1800,
+              "meters": 549.0,
+              "text": "Overcast"
+            }
+          ],
+          "conditions": [
+            {
+              "code": "HZ",
+              "text": "Haze"
+            }
+          ],
+          "wind": {
+            "degrees": 50,
+            "direction": "NE",
+            "speed_kts": 7,
+            "speed_mph": 8,
+            "speed_kph": 13,
+            "speed_mps": 4
+          },
+          "visibility": {
+            "miles": 6.0,
+            "meters": 9656.06,
+            "text": "6 miles",
+            "miles_text": "6 miles",
+            "meters_text": "6 miles"
+          }
+        },
+        {
+          "section": "FM040200 04005KT 6SM BR FEW010 SCT250",
+          "change": {
+            "code": "FM",
+            "period": {
+              "from": "2026-03-04T02:00:00Z"
+            },
+            "text": "Sudden rapid change"
+          },
+          "clouds": [
+            {
+              "code": "FEW",
+              "feet": 1000,
+              "meters": 305.0,
+              "text": "Few"
+            },
+            {
+              "code": "SCT",
+              "feet": 25000,
+              "meters": 7620.0,
+              "text": "Scattered"
+            }
+          ],
+          "conditions": [
+            {
+              "code": "BR",
+              "text": "Mist"
+            }
+          ],
+          "wind": {
+            "degrees": 40,
+            "direction": "NE",
+            "speed_kts": 5,
+            "speed_mph": 6,
+            "speed_kph": 9,
+            "speed_mps": 3
+          },
+          "visibility": {
+            "miles": 6.0,
+            "meters": 9656.06,
+            "text": "6 miles",
+            "miles_text": "6 miles",
+            "meters_text": "6 miles"
+          }
+        },
+        {
+          "section": "FM041400 08010KT P6SM SCT015 BKN070",
+          "change": {
+            "code": "FM",
+            "period": {
+              "from": "2026-03-04T14:00:00Z"
+            },
+            "text": "Sudden rapid change"
+          },
+          "clouds": [
+            {
+              "code": "SCT",
+              "feet": 1500,
+              "meters": 457.0,
+              "text": "Scattered"
+            },
+            {
+              "code": "BKN",
+              "feet": 7000,
+              "meters": 2134.0,
+              "text": "Broken"
+            }
+          ],
+          "wind": {
+            "degrees": 80,
+            "direction": "E",
+            "speed_kts": 10,
+            "speed_mph": 12,
+            "speed_kph": 19,
+            "speed_mps": 5
+          },
+          "visibility": {
+            "miles": 6.0,
+            "meters": 9656.06,
+            "text": "Greater than 6 miles",
+            "miles_text": "Greater than 6 miles",
+            "meters_text": "Greater than 6 miles"
+          }
+        },
+        {
+          "section": "FM041800 09009KT P6SM SCT010 OVC018",
+          "change": {
+            "code": "FM",
+            "period": {
+              "from": "2026-03-04T18:00:00Z"
+            },
+            "text": "Sudden rapid change"
+          },
+          "clouds": [
+            {
+              "code": "SCT",
+              "feet": 1000,
+              "meters": 305.0,
+              "text": "Scattered"
+            },
+            {
+              "code": "OVC",
+              "feet": 1800,
+              "meters": 549.0,
+              "text": "Overcast"
+            }
+          ],
+          "wind": {
+            "degrees": 90,
+            "direction": "E",
+            "speed_kts": 9,
+            "speed_mph": 10,
+            "speed_kph": 17,
+            "speed_mps": 5
+          },
+          "visibility": {
+            "miles": 6.0,
+            "meters": 9656.06,
+            "text": "Greater than 6 miles",
+            "miles_text": "Greater than 6 miles",
+            "meters_text": "Greater than 6 miles"
+          }
+        }
+      ]
+    }
+  ]
+}

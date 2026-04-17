@@ -1,0 +1,19 @@
+{
+  "airport_code": "KLAX",
+  "alternate_ident": "LAX",
+  "code_icao": "KLAX",
+  "code_iata": "LAX",
+  "code_lid": "LAX",
+  "name": "Los Angeles Intl",
+  "type": "Airport",
+  "elevation": 127,
+  "city": "Los Angeles",
+  "state": "CA",
+  "longitude": -118.4080486,
+  "latitude": 33.9424964,
+  "timezone": "America/Los_Angeles",
+  "country_code": "US",
+  "wiki_url": "http://en.wikipedia.org/wiki/Los_Angeles_International_Airport",
+  "airport_flights_url": "/airports/KLAX/flights",
+  "alternatives": []
+}

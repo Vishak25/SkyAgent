@@ -1,0 +1,19 @@
+{
+  "airport_code": "EGLL",
+  "alternate_ident": "LHR",
+  "code_icao": "EGLL",
+  "code_iata": "LHR",
+  "code_lid": null,
+  "name": "London Heathrow",
+  "type": "Airport",
+  "elevation": 83,
+  "city": "London",
+  "state": "England",
+  "longitude": -0.461389,
+  "latitude": 51.4775,
+  "timezone": "Europe/London",
+  "country_code": "GB",
+  "wiki_url": "https://en.wikipedia.org/wiki/London_Heathrow_Airport",
+  "airport_flights_url": "/airports/EGLL/flights",
+  "alternatives": []
+}

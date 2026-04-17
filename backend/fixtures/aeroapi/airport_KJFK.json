@@ -1,0 +1,19 @@
+{
+  "airport_code": "KJFK",
+  "alternate_ident": "JFK",
+  "code_icao": "KJFK",
+  "code_iata": "JFK",
+  "code_lid": "JFK",
+  "name": "John F Kennedy Intl",
+  "type": "Airport",
+  "elevation": 13,
+  "city": "New York",
+  "state": "NY",
+  "longitude": -73.7786922,
+  "latitude": 40.6399281,
+  "timezone": "America/New_York",
+  "country_code": "US",
+  "wiki_url": "http://en.wikipedia.org/wiki/John_F_Kennedy_International",
+  "airport_flights_url": "/airports/KJFK/flights",
+  "alternatives": []
+}

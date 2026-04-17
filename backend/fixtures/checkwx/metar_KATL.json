@@ -1,0 +1,71 @@
+{
+  "results": 1,
+  "data": [
+    {
+      "icao": "KATL",
+      "raw_text": "METAR KATL 032252Z 14008KT 10SM FEW024 FEW250 17/10 A3030 RMK AO2 SLP258 T01670100",
+      "observed": "2026-03-03T22:52:00Z",
+      "report": {
+        "type": "METAR",
+        "status": "Routine Report"
+      },
+      "clouds": [
+        {
+          "code": "FEW",
+          "feet": 2400,
+          "meters": 732.0,
+          "text": "Few"
+        },
+        {
+          "code": "FEW",
+          "feet": 25000,
+          "meters": 7620.0,
+          "text": "Few"
+        }
+      ],
+      "dewpoint": {
+        "celsius": 10,
+        "fahrenheit": 50
+      },
+      "flight_category": "VFR",
+      "temperature": {
+        "celsius": 17,
+        "fahrenheit": 63
+      },
+      "humidity": 63,
+      "station": {
+        "icao": "KATL",
+        "name": "Hartsfield Jackson Atlanta International Airport",
+        "geometry": {
+          "type": "Point",
+          "coordinates": [
+            -84.4281,
+            33.6367
+          ]
+        },
+        "location": "Atlanta, Georgia, United States"
+      },
+      "barometer": {
+        "hg": 30.3,
+        "mb": 1026.0,
+        "hpa": 1026.1,
+        "kpa": 102.6
+      },
+      "visibility": {
+        "miles": 10.0,
+        "meters": 9999.0,
+        "text": "Greater than 10 miles",
+        "miles_text": "Greater than 10 miles",
+        "meters_text": "Greater than 10 miles"
+      },
+      "wind": {
+        "degrees": 140,
+        "direction": "SE",
+        "speed_kts": 8,
+        "speed_mph": 9,
+        "speed_kph": 15,
+        "speed_mps": 4
+      }
+    }
+  ]
+}

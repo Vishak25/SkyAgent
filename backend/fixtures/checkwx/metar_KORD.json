@@ -1,0 +1,83 @@
+{
+  "results": 1,
+  "data": [
+    {
+      "icao": "KORD",
+      "raw_text": "METAR KORD 032251Z 05006KT 8SM BKN015 BKN029 BKN250 03/M01 A3012 RMK AO2 SLP206 T00331006",
+      "observed": "2026-03-03T22:51:00Z",
+      "report": {
+        "type": "METAR",
+        "status": "Routine Report"
+      },
+      "clouds": [
+        {
+          "code": "BKN",
+          "feet": 1500,
+          "meters": 457.0,
+          "text": "Broken"
+        },
+        {
+          "code": "BKN",
+          "feet": 2900,
+          "meters": 884.0,
+          "text": "Broken"
+        },
+        {
+          "code": "BKN",
+          "feet": 25000,
+          "meters": 7620.0,
+          "text": "Broken"
+        }
+      ],
+      "ceiling": {
+        "code": "BKN",
+        "feet": 1500,
+        "meters": 457.0,
+        "text": "Broken"
+      },
+      "dewpoint": {
+        "celsius": -1,
+        "fahrenheit": 30
+      },
+      "flight_category": "MVFR",
+      "temperature": {
+        "celsius": 3,
+        "fahrenheit": 37
+      },
+      "humidity": 74,
+      "station": {
+        "icao": "KORD",
+        "name": "Chicago O'Hare International Airport",
+        "geometry": {
+          "type": "Point",
+          "coordinates": [
+            -87.9048,
+            41.9786
+          ]
+        },
+        "location": "Chicago, Illinois, United States"
+      },
+      "barometer": {
+        "hg": 30.12,
+        "mb": 1020.0,
+        "hpa": 1020.0,
+        "kpa": 102.0
+      },
+      "visibility": {
+        "miles": 8.0,
+        "meters": 12874.75,
+        "text": "8 miles",
+        "miles_text": "8 miles",
+        "meters_text": "8 miles"
+      },
+      "wind": {
+        "degrees": 50,
+        "direction": "NE",
+        "speed_kts": 6,
+        "speed_mph": 7,
+        "speed_kph": 11,
+        "speed_mps": 3
+      }
+    }
+  ]
+}

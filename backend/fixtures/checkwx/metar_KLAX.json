@@ -1,0 +1,71 @@
+{
+  "results": 1,
+  "data": [
+    {
+      "icao": "KLAX",
+      "raw_text": "METAR KLAX 032253Z 26011KT 10SM FEW180 FEW250 17/12 A3001 RMK AO2 SLP160 T01670122",
+      "observed": "2026-03-03T22:53:00Z",
+      "report": {
+        "type": "METAR",
+        "status": "Routine Report"
+      },
+      "clouds": [
+        {
+          "code": "FEW",
+          "feet": 18000,
+          "meters": 5486.0,
+          "text": "Few"
+        },
+        {
+          "code": "FEW",
+          "feet": 25000,
+          "meters": 7620.0,
+          "text": "Few"
+        }
+      ],
+      "dewpoint": {
+        "celsius": 12,
+        "fahrenheit": 54
+      },
+      "flight_category": "VFR",
+      "temperature": {
+        "celsius": 17,
+        "fahrenheit": 63
+      },
+      "humidity": 72,
+      "station": {
+        "icao": "KLAX",
+        "name": "Los Angeles International Airport",
+        "geometry": {
+          "type": "Point",
+          "coordinates": [
+            -118.408,
+            33.9425
+          ]
+        },
+        "location": "Los Angeles, California, United States"
+      },
+      "barometer": {
+        "hg": 30.01,
+        "mb": 1016.0,
+        "hpa": 1016.3,
+        "kpa": 101.6
+      },
+      "visibility": {
+        "miles": 10.0,
+        "meters": 9999.0,
+        "text": "Greater than 10 miles",
+        "miles_text": "Greater than 10 miles",
+        "meters_text": "Greater than 10 miles"
+      },
+      "wind": {
+        "degrees": 260,
+        "direction": "W",
+        "speed_kts": 11,
+        "speed_mph": 13,
+        "speed_kph": 20,
+        "speed_mps": 6
+      }
+    }
+  ]
+}

@@ -1,49 +1,51 @@
-# Logs
-logs
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-lerna-debug.log*
-
-node_modules
-dist
-dist-ssr
-*.local
+# Secrets / credentials
 .env
 .env.*
 !.env.example
-
-# Angular/Vite caches
-.angular
-.angular/
-
-# Secrets / local credentials
 credentials.json
-
-# Editor directories and files
-.vscode/*
-!.vscode/extensions.json
-.idea
-.DS_Store
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
 
 # Python
 __pycache__/
 *.py[cod]
-.pycache/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
 .venv/
 venv/
 
-# Downloaded datasets
+# Editor
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.sw?
+
+# Logs
+*.log
+logs/
+
+# Downloaded datasets (large, regenerable)
 backend/data/raw/*.csv
 backend/data/raw/*.parquet
-backend/data/raw/*.json
+
+# Model weights (tracked separately if needed)
+# backend/model_weights/*.pt
+
+# Singularity images (too large for git)
+*.sif
+
+# Node / frontend (added when React frontend is scaffolded)
+node_modules/
+dist/
+
+# Claude Code / internal dev notes
+.claude/
+CLAUDE_MEMORY.md
+**/CLAUDE_MEMORY.md
+
+# Build / test caches
+.pytest_cache/
+*.egg-info/
+
+# OS
+Thumbs.db

@@ -1,0 +1,87 @@
+{
+  "results": 1,
+  "data": [
+    {
+      "icao": "KJFK",
+      "raw_text": "METAR KJFK 032251Z 02006KT 3SM -RA BR BKN005 OVC018 02/02 A3032 RMK AO2 SFC VIS 6 SLP265 P0002 T00220017",
+      "observed": "2026-03-03T22:51:00Z",
+      "report": {
+        "type": "METAR",
+        "status": "Routine Report"
+      },
+      "conditions": [
+        {
+          "code": "-RA",
+          "text": "Light Rain"
+        },
+        {
+          "code": "BR",
+          "text": "Mist"
+        }
+      ],
+      "clouds": [
+        {
+          "code": "BKN",
+          "feet": 500,
+          "meters": 152.0,
+          "text": "Broken"
+        },
+        {
+          "code": "OVC",
+          "feet": 1800,
+          "meters": 549.0,
+          "text": "Overcast"
+        }
+      ],
+      "ceiling": {
+        "code": "BKN",
+        "feet": 500,
+        "meters": 152.0,
+        "text": "Broken"
+      },
+      "dewpoint": {
+        "celsius": 2,
+        "fahrenheit": 36
+      },
+      "flight_category": "IFR",
+      "temperature": {
+        "celsius": 2,
+        "fahrenheit": 36
+      },
+      "humidity": 100,
+      "station": {
+        "icao": "KJFK",
+        "name": "John F. Kennedy International Airport",
+        "geometry": {
+          "type": "Point",
+          "coordinates": [
+            -73.77932,
+            40.63945
+          ]
+        },
+        "location": "New York, New York, United States"
+      },
+      "barometer": {
+        "hg": 30.32,
+        "mb": 1027.0,
+        "hpa": 1026.8,
+        "kpa": 102.7
+      },
+      "visibility": {
+        "miles": 3.0,
+        "meters": 4828.03,
+        "text": "3 miles",
+        "miles_text": "3 miles",
+        "meters_text": "3 miles"
+      },
+      "wind": {
+        "degrees": 20,
+        "direction": "NNE",
+        "speed_kts": 6,
+        "speed_mph": 7,
+        "speed_kph": 11,
+        "speed_mps": 3
+      }
+    }
+  ]
+}

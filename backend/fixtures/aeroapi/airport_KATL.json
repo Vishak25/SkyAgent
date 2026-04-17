@@ -1,0 +1,19 @@
+{
+  "airport_code": "KATL",
+  "alternate_ident": "ATL",
+  "code_icao": "KATL",
+  "code_iata": "ATL",
+  "code_lid": "ATL",
+  "name": "Hartsfield-Jackson Intl",
+  "type": "Airport",
+  "elevation": 1026,
+  "city": "Atlanta",
+  "state": "GA",
+  "longitude": -84.427864,
+  "latitude": 33.6366996,
+  "timezone": "America/New_York",
+  "country_code": "US",
+  "wiki_url": "http://en.wikipedia.org/wiki/Hartsfield-Jackson_International_Airport",
+  "airport_flights_url": "/airports/KATL/flights",
+  "alternatives": []
+}

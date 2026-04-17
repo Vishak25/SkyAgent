@@ -1,0 +1,87 @@
+{
+  "results": 1,
+  "data": [
+    {
+      "icao": "KBOS",
+      "raw_text": "METAR KBOS 032254Z 05005KT 5SM -FZRA BR FEW004 OVC040 M01/M01 A3039 RMK AO2 RAB33E53FZRAB53PLB24E53SNE33 SLP290 P0009 T10061011 $",
+      "observed": "2026-03-03T22:54:00Z",
+      "report": {
+        "type": "METAR",
+        "status": "Routine Report"
+      },
+      "conditions": [
+        {
+          "code": "-FZRA",
+          "text": "Light Freezing Rain"
+        },
+        {
+          "code": "BR",
+          "text": "Mist"
+        }
+      ],
+      "clouds": [
+        {
+          "code": "FEW",
+          "feet": 400,
+          "meters": 122.0,
+          "text": "Few"
+        },
+        {
+          "code": "OVC",
+          "feet": 4000,
+          "meters": 1219.0,
+          "text": "Overcast"
+        }
+      ],
+      "ceiling": {
+        "code": "OVC",
+        "feet": 4000,
+        "meters": 1219.0,
+        "text": "Overcast"
+      },
+      "dewpoint": {
+        "celsius": -1,
+        "fahrenheit": 30
+      },
+      "flight_category": "MVFR",
+      "temperature": {
+        "celsius": -1,
+        "fahrenheit": 30
+      },
+      "humidity": 100,
+      "station": {
+        "icao": "KBOS",
+        "name": "General Edward Lawrence Logan International Airport",
+        "geometry": {
+          "type": "Point",
+          "coordinates": [
+            -71.0079,
+            42.36197
+          ]
+        },
+        "location": "Boston, Massachusetts, United States"
+      },
+      "barometer": {
+        "hg": 30.39,
+        "mb": 1029.0,
+        "hpa": 1029.1,
+        "kpa": 102.9
+      },
+      "visibility": {
+        "miles": 5.0,
+        "meters": 8046.72,
+        "text": "5 miles",
+        "miles_text": "5 miles",
+        "meters_text": "5 miles"
+      },
+      "wind": {
+        "degrees": 50,
+        "direction": "NE",
+        "speed_kts": 5,
+        "speed_mph": 6,
+        "speed_kph": 9,
+        "speed_mps": 3
+      }
+    }
+  ]
+}

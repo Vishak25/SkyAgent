@@ -1,0 +1,60 @@
+{
+    "scheduled_arrivals": [
+        {
+            "ident": "UAL123",
+            "ident_iata": "UA123",
+            "operator": "UAL",
+            "operator_iata": "UA",
+            "operator_icao": "UAL",
+            "flight_number": "123",
+            "origin": {
+                "code": "KORD",
+                "code_icao": "KORD",
+                "code_iata": "ORD",
+                "timezone": "America/Chicago",
+                "name": "Chicago O'Hare Intl"
+            },
+            "destination": {
+                "code": "EGLL",
+                "code_icao": "EGLL",
+                "code_iata": "LHR",
+                "timezone": "Europe/London",
+                "name": "London Heathrow"
+            },
+            "scheduled_out": "2026-03-04T14:00:00Z",
+            "scheduled_off": "2026-03-04T14:25:00Z",
+            "scheduled_on": "2026-03-04T21:45:00Z",
+            "scheduled_in": "2026-03-04T22:00:00Z",
+            "status": "Scheduled"
+        },
+        {
+            "ident": "AAL86",
+            "ident_iata": "AA86",
+            "operator": "AAL",
+            "operator_iata": "AA",
+            "operator_icao": "AAL",
+            "flight_number": "86",
+            "origin": {
+                "code": "KORD",
+                "code_icao": "KORD",
+                "code_iata": "ORD",
+                "timezone": "America/Chicago",
+                "name": "Chicago O'Hare Intl"
+            },
+            "destination": {
+                "code": "EGLL",
+                "code_icao": "EGLL",
+                "code_iata": "LHR",
+                "timezone": "Europe/London",
+                "name": "London Heathrow"
+            },
+            "scheduled_out": "2026-03-04T18:30:00Z",
+            "scheduled_off": "2026-03-04T18:55:00Z",
+            "scheduled_on": "2026-03-05T02:10:00Z",
+            "scheduled_in": "2026-03-05T02:25:00Z",
+            "status": "Scheduled"
+        }
+    ],
+    "links": null,
+    "num_pages": 1
+}

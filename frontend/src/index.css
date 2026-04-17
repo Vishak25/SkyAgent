@@ -1,0 +1,300 @@
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #0a0e1a;
+  --surface: #111827;
+  --surface2: #1a2235;
+  --border: #1e293b;
+  --text: #e2e8f0;
+  --muted: #64748b;
+  --accent: #3b82f6;
+  --font: 'Inter', system-ui, sans-serif;
+  --mono: 'JetBrains Mono', monospace;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 14px;
+  line-height: 1.6;
+  min-height: 100vh;
+}
+
+/* ── Layout ─────────────────────────────────────────────── */
+.app { max-width: 900px; margin: 0 auto; padding: 0 16px 64px; }
+
+.app-header {
+  padding: 32px 0 24px;
+  display: flex;
+  align-items: baseline;
+  gap: 16px;
+}
+.logo { display: flex; align-items: center; gap: 8px; }
+.logo-icon { font-size: 20px; }
+.logo-text { font-size: 22px; font-weight: 700; letter-spacing: -0.5px; color: #fff; }
+.logo-sub { color: var(--muted); font-size: 13px; }
+
+.app-main { display: flex; flex-direction: column; gap: 16px; }
+
+/* ── Card ────────────────────────────────────────────────── */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 20px;
+}
+.card-title {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  margin-bottom: 14px;
+}
+.muted { color: var(--muted); font-size: 13px; }
+
+/* ── Search ──────────────────────────────────────────────── */
+.search-form { display: flex; flex-direction: column; gap: 8px; }
+.search-box {
+  display: flex;
+  align-items: center;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 4px 4px 4px 16px;
+  gap: 8px;
+  transition: border-color 0.15s;
+}
+.search-box:focus-within { border-color: var(--accent); }
+.search-icon { font-size: 16px; color: var(--muted); }
+.search-input {
+  flex: 1;
+  background: none;
+  border: none;
+  outline: none;
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 15px;
+  letter-spacing: 0.05em;
+}
+.search-input::placeholder { color: var(--muted); }
+.search-btn {
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 7px;
+  padding: 8px 20px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 80px;
+  height: 36px;
+}
+.search-btn:disabled { opacity: 0.5; cursor: default; }
+.search-hint { font-size: 12px; color: var(--muted); }
+
+/* ── Spinner ─────────────────────────────────────────────── */
+.spinner {
+  display: inline-block;
+  width: 14px; height: 14px;
+  border: 2px solid rgba(255,255,255,0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Loading state ───────────────────────────────────────── */
+.loading-state {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 24px;
+}
+.loading-steps { display: flex; flex-direction: column; gap: 10px; }
+.loading-step { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 13px; }
+.step-dot {
+  width: 6px; height: 6px;
+  background: var(--accent);
+  border-radius: 50%;
+  animation: pulse 1.2s ease-in-out infinite;
+}
+.loading-step:nth-child(2) .step-dot { animation-delay: 0.3s; }
+.loading-step:nth-child(3) .step-dot { animation-delay: 0.6s; }
+.loading-step:nth-child(4) .step-dot { animation-delay: 0.9s; }
+@keyframes pulse { 0%,100% { opacity: 0.3; } 50% { opacity: 1; } }
+
+/* ── Error ───────────────────────────────────────────────── */
+.error-box {
+  background: #1a0a0a;
+  border: 1px solid #ef4444;
+  border-radius: 10px;
+  padding: 14px 16px;
+  color: #ef4444;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+/* ── Grid ────────────────────────────────────────────────── */
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.results { display: flex; flex-direction: column; gap: 16px; }
+
+/* ── Flight Header ───────────────────────────────────────── */
+.flight-header {}
+.header-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+.flight-id { display: flex; align-items: center; gap: 10px; }
+.flight-num { font-size: 22px; font-weight: 700; font-family: var(--mono); color: #fff; }
+.operator { font-size: 13px; color: var(--muted); }
+.aircraft {
+  font-size: 12px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 2px 7px;
+  color: var(--muted);
+  font-family: var(--mono);
+}
+.flight-status-badge { font-size: 13px; font-weight: 600; }
+
+.route-row { display: flex; align-items: center; gap: 16px; }
+.airport-block { flex: 1; display: flex; flex-direction: column; }
+.airport-block.right { text-align: right; align-items: flex-end; }
+.iata { font-size: 32px; font-weight: 700; font-family: var(--mono); color: #fff; line-height: 1; }
+.city { font-size: 13px; color: var(--muted); margin-top: 2px; }
+.time { font-size: 16px; font-weight: 600; margin-top: 4px; }
+.detail { font-size: 11px; color: var(--muted); margin-top: 2px; font-family: var(--mono); }
+
+.route-arrow { flex: 0 0 auto; text-align: center; color: var(--muted); }
+.distance { font-size: 11px; display: block; margin-bottom: 2px; }
+.arrow-line { font-size: 20px; color: var(--border); }
+
+.delay-pills { display: flex; gap: 8px; margin-top: 16px; flex-wrap: wrap; }
+.pill {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 99px;
+  font-family: var(--mono);
+}
+.pill-warn { background: #f9731622; color: #f97316; border: 1px solid #f9731644; }
+.pill-ok   { background: #22c55e22; color: #22c55e; border: 1px solid #22c55e44; }
+
+/* ── Weather ─────────────────────────────────────────────── */
+.weather-card {}
+.weather-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 14px; }
+.weather-header .card-title { margin-bottom: 0; }
+.iata-small { font-family: var(--mono); font-size: 11px; color: var(--muted); margin-left: 4px; }
+.cat-badge {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 5px;
+  font-family: var(--mono);
+  letter-spacing: 0.05em;
+}
+.weather-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.wx-item { display: flex; flex-direction: column; }
+.wx-item-full { grid-column: span 2; }
+.wx-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+.wx-value { font-size: 15px; font-weight: 600; margin-top: 2px; font-family: var(--mono); }
+.wx-warn { color: #f97316; }
+
+/* ── Delay Card ──────────────────────────────────────────── */
+.delay-card {}
+.delay-main { display: flex; align-items: baseline; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+.delay-mins { font-size: 48px; font-weight: 700; font-family: var(--mono); line-height: 1; }
+.delay-unit { font-size: 18px; color: var(--muted); }
+.delay-risk-label {
+  font-size: 12px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 6px;
+  letter-spacing: 0.05em;
+}
+.delay-bar-track {
+  height: 6px;
+  background: var(--surface2);
+  border-radius: 99px;
+  overflow: hidden;
+  margin-bottom: 4px;
+}
+.delay-bar-fill { height: 100%; border-radius: 99px; transition: width 0.5s ease; }
+.delay-bar-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  color: var(--muted);
+  font-family: var(--mono);
+  margin-bottom: 14px;
+}
+.delay-note { font-size: 12px; }
+
+/* ── Agent Feed ──────────────────────────────────────────── */
+.agent-feed {}
+.agent-log { list-style: none; display: flex; flex-direction: column; gap: 8px; }
+.log-entry { display: flex; align-items: flex-start; gap: 10px; }
+.log-icon { font-size: 14px; flex-shrink: 0; margin-top: 1px; }
+.log-text { font-size: 13px; font-family: var(--mono); color: #94a3b8; line-height: 1.5; }
+
+/* ── LLM Summary ─────────────────────────────────────────── */
+.llm-summary {}
+.llm-header { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+.llm-header .card-title { margin-bottom: 0; }
+.llm-badge {
+  font-size: 11px;
+  background: #3b82f622;
+  color: #3b82f6;
+  border: 1px solid #3b82f644;
+  border-radius: 5px;
+  padding: 2px 8px;
+  font-family: var(--mono);
+}
+.llm-text { font-size: 15px; line-height: 1.7; color: #cbd5e1; }
+
+/* ── Route Comparison ────────────────────────────────────── */
+.route-comparison {}
+.routes-list { display: flex; flex-direction: column; gap: 8px; }
+.route-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  position: relative;
+}
+.route-best { border-color: #22c55e44; background: #22c55e0a; }
+.best-badge {
+  font-size: 10px;
+  font-weight: 700;
+  background: #22c55e22;
+  color: #22c55e;
+  border: 1px solid #22c55e44;
+  border-radius: 4px;
+  padding: 2px 6px;
+  flex-shrink: 0;
+}
+.route-path { flex: 1; font-family: var(--mono); font-size: 13px; display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+.route-sep { color: var(--muted); padding: 0 2px; }
+.route-airport { color: #fff; font-weight: 600; }
+.route-delay { font-family: var(--mono); font-size: 13px; color: var(--muted); flex-shrink: 0; }
+
+/* ── Responsive ──────────────────────────────────────────── */
+@media (max-width: 600px) {
+  .grid-2 { grid-template-columns: 1fr; }
+  .iata { font-size: 24px; }
+  .delay-mins { font-size: 36px; }
+  .app-header { flex-direction: column; gap: 4px; }
+}
