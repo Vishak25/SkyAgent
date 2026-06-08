@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { AnalysisResult } from './types'
+import { FlightAnalysis } from './types'
 import FlightSearch from './components/FlightSearch'
 import FlightHeader from './components/FlightHeader'
 import WeatherCard from './components/WeatherCard'
@@ -8,8 +8,10 @@ import AgentActivityFeed from './components/AgentActivityFeed'
 import LLMSummary from './components/LLMSummary'
 import RouteComparison from './components/RouteComparison'
 
+const FETCH_TIMEOUT_MS = 45_000
+
 export default function App() {
-  const [result, setResult] = useState<AnalysisResult | null>(null)
+  const [result, setResult] = useState<FlightAnalysis | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -17,22 +19,29 @@ export default function App() {
     setLoading(true)
     setError(null)
     setResult(null)
+
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS)
+
     try {
-      const res = await fetch(`/api/analyze/${flightNumber}`)
+      const res = await fetch(`/api/analyze/${flightNumber}`, { signal: controller.signal })
       if (!res.ok) {
         const body = await res.json().catch(() => ({}))
         throw new Error(body.detail ?? `HTTP ${res.status}`)
       }
-      const data: AnalysisResult = await res.json()
+      const data: FlightAnalysis = await res.json()
       setResult(data)
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Unknown error')
+      if (e instanceof DOMException && e.name === 'AbortError') {
+        setError('Request timed out — the pipeline took longer than expected. Try again.')
+      } else {
+        setError(e instanceof Error ? e.message : 'Unknown error')
+      }
     } finally {
+      clearTimeout(timer)
       setLoading(false)
     }
   }
-
-  const status = result?.flight_status?.status
 
   return (
     <div className="app">
@@ -50,7 +59,12 @@ export default function App() {
         {loading && (
           <div className="loading-state">
             <div className="loading-steps">
-              {['Fetching flight status...', 'Fetching weather...', 'Running ST-GNN...', 'Generating assessment...'].map((s, i) => (
+              {[
+                'Fetching live flight status & schedule…',
+                'Pulling METAR weather for origin & destination…',
+                'Running ST-GNN delay propagation…',
+                'Generating AI assessment…',
+              ].map((s, i) => (
                 <div key={i} className="loading-step">
                   <span className="step-dot" />
                   <span>{s}</span>
@@ -67,24 +81,31 @@ export default function App() {
           </div>
         )}
 
-        {result && status && (
+        {result && (
           <div className="results">
-            <FlightHeader flightNumber={result.flight_number} status={status} />
+            <FlightHeader result={result} />
 
             <div className="grid-2">
-              <WeatherCard label="Origin" iata={result.origin} data={result.weather_origin} />
-              <WeatherCard label="Destination" iata={result.destination} data={result.weather_destination} />
+              <WeatherCard label="Origin" iata={result.origin} data={result.weatherOrigin} />
+              <WeatherCard label="Destination" iata={result.destination} data={result.weatherDest} />
             </div>
 
             <div className="grid-2">
-              <DelayRiskCard predictedDelay={result.predicted_delay} />
-              <AgentActivityFeed log={result.agent_log} />
+              <DelayRiskCard
+                predictedDelayMinutes={result.predictedDelayMinutes}
+                observedDelayMinutes={result.observedDelayMinutes}
+                inboundDelayMinutes={result.inboundDelayMinutes ?? null}
+                delayProbability={result.delayProbability}
+              />
+              {result.agentLog && result.agentLog.length > 0 && (
+                <AgentActivityFeed log={result.agentLog} />
+              )}
             </div>
 
-            <LLMSummary summary={result.llm_summary} />
+            {result.llmSummary && <LLMSummary summary={result.llmSummary} />}
 
-            {result.alternative_routes && result.alternative_routes.length > 0 && (
-              <RouteComparison routes={result.alternative_routes} />
+            {result.alternativeRoutes && result.alternativeRoutes.length > 0 && (
+              <RouteComparison routes={result.alternativeRoutes} />
             )}
           </div>
         )}

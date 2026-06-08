@@ -4,6 +4,16 @@ interface Props {
   routes: Itinerary[]
 }
 
+function riskColor(risk: string): string {
+  switch (risk) {
+    case 'Low':       return '#22c55e'
+    case 'Moderate':  return '#eab308'
+    case 'High':      return '#f97316'
+    case 'Very High': return '#ef4444'
+    default:          return '#94a3b8'
+  }
+}
+
 export default function RouteComparison({ routes }: Props) {
   if (!routes || routes.length === 0) return null
 
@@ -13,19 +23,35 @@ export default function RouteComparison({ routes }: Props) {
       <div className="routes-list">
         {routes.slice(0, 5).map((route, i) => {
           const legs = route.legs ?? []
-          const total = route.total_delay_minutes ?? legs.reduce((s, l) => s + (l.predicted_delay_minutes ?? 0), 0)
+          // Build full path: origin → hub1 → ... → destination
+          const airports = legs.length > 0
+            ? [legs[0].origin, ...legs.map(l => l.destination)]
+            : [route.flightNumber]
+
+          const color = riskColor(route.delayRisk)
+
           return (
-            <div key={i} className={`route-row ${i === 0 ? 'route-best' : ''}`}>
-              {i === 0 && <span className="best-badge">Best</span>}
+            <div key={i} className={`route-row ${route.recommended ? 'route-best' : ''}`}>
+              {route.recommended && <span className="best-badge">Best</span>}
+
               <span className="route-path">
-                {legs.map((l, j) => (
+                {airports.map((ap, j) => (
                   <span key={j}>
                     {j > 0 && <span className="route-sep">→</span>}
-                    <span className="route-airport">{l.destination}</span>
+                    <span className="route-airport">{ap}</span>
                   </span>
                 ))}
               </span>
-              <span className="route-delay">{total} min</span>
+
+              <span className="route-meta">
+                <span className="route-delay">{route.predictedDelayMinutes} min</span>
+                <span
+                  className="route-risk-badge"
+                  style={{ color, background: color + '22', border: `1px solid ${color}44` }}
+                >
+                  {route.delayRisk}
+                </span>
+              </span>
             </div>
           )
         })}

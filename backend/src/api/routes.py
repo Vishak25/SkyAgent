@@ -67,9 +67,12 @@ def predict_flight_delay(flight_number: str):
 
 @router.get("/analyze/{flight_number}")
 async def analyze_flight(flight_number: str):
-    """Agent mode: run the full LangGraph pipeline for a flight."""
+    """Agent mode: full LangGraph pipeline — flight data + ST-GNN + LLM narrative."""
     try:
         result = await run_pipeline(flight_number)
+        if isinstance(result, dict) and result.get("error"):
+            status_code = int(result.pop("_status_code", 400) or 400)
+            return JSONResponse(status_code=status_code, content=result)
         return result
     except Exception as e:
         print(f"Error in agent pipeline for {flight_number}: {e}")

@@ -253,6 +253,7 @@ class AviationGraphHandler:
         cat = str(metar.get("flight_category", "VFR"))
         precip_label = str(metar.get("precip_label", "None") or "None")
         return {
+            "flightCategory": cat,
             "temp": int(metar.get("temp_f") or 0),
             "condition": category_to_condition(cat, precip_label),
             "windSpeed": int(float(metar.get("wind_speed_kts", 0) or 0)),
@@ -372,7 +373,27 @@ class AviationGraphHandler:
                 pass
 
         observed_delay = max(observed_dep_delay, observed_arr_delay)
-        final_delay_minutes = max(observed_delay, predicted_delay_minutes)
+
+        # Inbound-aircraft delay propagation: the most reliable pre-departure signal.
+        # If the aircraft on its previous leg arrived late, subtract a turnaround buffer
+        # and propagate the remainder into the departure delay forecast.
+        TURNAROUND_SLACK_MIN = 30
+        inbound_delay_minutes = 0
+        inbound_fa_id = (
+            (real_status.get("inbound_fa_flight_id") or "").strip()
+            or (real_status.get("inbound_flight_id") or "").strip()
+        )
+        if inbound_fa_id:
+            inbound_status = self.aeroapi.get_flight_status(inbound_fa_id)
+            if isinstance(inbound_status, dict) and not inbound_status.get("error"):
+                raw_inbound_arr = inbound_status.get("arrival_delay") or 0
+                try:
+                    inbound_arr_delay_min = max(0, int(float(raw_inbound_arr) / 60))
+                except (ValueError, TypeError):
+                    inbound_arr_delay_min = 0
+                inbound_delay_minutes = max(0, inbound_arr_delay_min - TURNAROUND_SLACK_MIN)
+
+        final_delay_minutes = max(observed_delay, predicted_delay_minutes, inbound_delay_minutes)
 
         aero_status_raw = str(real_status.get("status") or "").lower()
         cancelled = bool(real_status.get("cancelled") or "cancelled" in aero_status_raw)
@@ -459,6 +480,8 @@ class AviationGraphHandler:
             "scheduledArr": sched_arr, "actualArr": actual_arr, "arrTimeKind": arr_time_kind,
             "terminalOrigin": terminal_origin, "gateOrigin": gate_origin,
             "terminalDest": terminal_dest, "gateDest": gate_dest, "baggageClaim": baggage,
+            "inboundDelayMinutes": inbound_delay_minutes if inbound_fa_id else None,
+            "inboundFlightId": inbound_fa_id or None,
             "delayProbability": delay_probability,
             "networkCongestion": int(congestion_origin * 100),
             "propagationRisk": risk["propagationRisk"],
@@ -561,6 +584,11 @@ class AviationGraphHandler:
         connection_hubs = [h for h in ["ORD", "JFK", "ATL", "DFW", "DEN", "LAX", "SFO", "LHR", "FRA", "AMS"]
                           if h != origin and h != destination]
 
+        # Run model once outside the hub loop — same graph for all hubs.
+        model.eval()
+        with torch.no_grad():
+            hub_out = model(data.x, data.edge_index)
+
         for hub in connection_hubs[:6]:
             hub_taf = ctx["taf_by_iata"].get(hub) or {}
             hub_metar = ctx["metar_by_iata"].get(hub) or {}
@@ -572,10 +600,7 @@ class AviationGraphHandler:
             if hub_idx is None or dest_idx is None:
                 continue
 
-            model.eval()
-            with torch.no_grad():
-                out = model(data.x, data.edge_index)
-
+            out = hub_out
             if getattr(model, "_log_space", False):
                 delay_leg1 = max(0, int(math.expm1(float(out[hub_idx].item()))))
                 delay_leg2 = max(0, int(math.expm1(float(out[dest_idx].item()))))

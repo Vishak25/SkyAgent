@@ -1,5 +1,8 @@
 interface Props {
-  predictedDelay: number | null
+  predictedDelayMinutes: number | null
+  observedDelayMinutes?: number
+  inboundDelayMinutes?: number | null
+  delayProbability?: number
 }
 
 function riskLabel(mins: number): { label: string; color: string } {
@@ -9,14 +12,19 @@ function riskLabel(mins: number): { label: string; color: string } {
   return             { label: 'Very High',  color: '#ef4444' }
 }
 
-export default function DelayRiskCard({ predictedDelay }: Props) {
-  const mins = predictedDelay ?? 0
+export default function DelayRiskCard({
+  predictedDelayMinutes,
+  observedDelayMinutes,
+  inboundDelayMinutes,
+  delayProbability,
+}: Props) {
+  const mins = predictedDelayMinutes ?? 0
   const { label, color } = riskLabel(mins)
   const pct = Math.min((mins / 60) * 100, 100)
 
   return (
     <div className="card delay-card">
-      <h3 className="card-title">ST-GNN Delay Prediction</h3>
+      <h3 className="card-title">Delay Prediction</h3>
 
       <div className="delay-main">
         <span className="delay-mins" style={{ color }}>{mins}</span>
@@ -33,9 +41,17 @@ export default function DelayRiskCard({ predictedDelay }: Props) {
         <span>0</span><span>15</span><span>30</span><span>45</span><span>60+</span>
       </div>
 
-      <p className="delay-note muted">
-        Predicted by Spatio-Temporal GNN trained on 30-day METAR observations across 20 hub airports.
-      </p>
+      <div className="delay-breakdown">
+        {observedDelayMinutes != null && observedDelayMinutes > 0 && (
+          <span className="delay-detail">Observed: +{observedDelayMinutes} min</span>
+        )}
+        {inboundDelayMinutes != null && inboundDelayMinutes > 0 && (
+          <span className="delay-detail">Inbound aircraft: +{inboundDelayMinutes} min</span>
+        )}
+        {delayProbability != null && (
+          <span className="delay-detail">Delay probability: {delayProbability}%</span>
+        )}
+      </div>
     </div>
   )
 }

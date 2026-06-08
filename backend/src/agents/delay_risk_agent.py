@@ -1,13 +1,9 @@
 """
 Delay Risk Agent — runs ST-GNN inference and computes propagation risk score.
 
-Phase 3 implementation. Uses the trained STGNN model via GNN tools to:
-  - Build the airport graph with current weather + congestion features
-  - Run ST-GNN inference to predict delay in minutes
-  - Compute a composite risk score (weather × congestion × traffic)
-  - Return structured risk assessment for the orchestrator
-
-TODO Phase 3: Implement as a LangGraph node with vLLM tool-calling.
+In the main LangGraph pipeline the delay calculation happens inside the track node
+(via get_prediction_for_flight).  This class is kept for standalone / testing use.
+The model must be injected — it never falls back to a randomly-initialised STGNN.
 """
 from __future__ import annotations
 
@@ -20,15 +16,17 @@ from src.models.delay_gnn.model import STGNN
 class DelayRiskAgent:
     """Runs GNN-based delay prediction and risk scoring."""
 
-    def __init__(self, model: Optional[STGNN] = None):
-        self.graph_handler = AviationGraphHandler()
-        self.model = model or STGNN(in_channels=5, hidden_channels=32, out_channels=1)
+    def __init__(self, model: STGNN, graph_handler: Optional[AviationGraphHandler] = None):
+        if model is None:
+            raise ValueError(
+                "DelayRiskAgent requires a trained STGNN instance. "
+                "Never pass None — that would silently use random weights."
+            )
+        self.model = model
+        self.graph_handler = graph_handler or AviationGraphHandler()
 
     async def run(self, origin: str, destination: str) -> Dict[str, Any]:
-        """
-        Build graph, run inference, return delay prediction + risk score.
-        TODO Phase 3: Wrap with vLLM tool-calling via LangGraph node.
-        """
+        """Build graph, run inference, return delay prediction."""
         from src.config.settings import BASE_AIRPORTS, uniq_preserve
         airports = uniq_preserve(list(BASE_AIRPORTS) + [origin, destination])
         data, ctx = self.graph_handler.build_graph(origin, destination, airports=airports)

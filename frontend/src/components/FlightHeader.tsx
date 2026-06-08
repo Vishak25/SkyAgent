@@ -1,82 +1,88 @@
-import { FlightStatus } from '../types'
+import { FlightAnalysis } from '../types'
 
 interface Props {
-  flightNumber: string
-  status: FlightStatus
-}
-
-function fmtTime(iso: string | null, tz: string): string {
-  if (!iso) return '—'
-  try {
-    return new Date(iso).toLocaleTimeString('en-US', {
-      hour: 'numeric', minute: '2-digit', hour12: true, timeZone: tz,
-    })
-  } catch {
-    return iso.slice(11, 16)
-  }
+  result: FlightAnalysis
 }
 
 function statusColor(s: string): string {
   const l = s.toLowerCase()
-  if (l.includes('on time') || l === 'landed') return '#22c55e'
+  if (l.includes('on time') || l.includes('early') || l.includes('arrived')) return '#22c55e'
   if (l.includes('delay') || l.includes('late')) return '#f97316'
   if (l.includes('cancel')) return '#ef4444'
+  if (l.includes('en route')) return '#3b82f6'
   return '#94a3b8'
 }
 
-export default function FlightHeader({ flightNumber, status }: Props) {
-  // AeroAPI returns delays in seconds — convert to minutes
-  const depDelay = Math.round((status.departure_delay ?? 0) / 60)
-  const arrDelay = Math.round((status.arrival_delay ?? 0) / 60)
+export default function FlightHeader({ result }: Props) {
+  const {
+    flightNumber, airline, status,
+    origin, destination,
+    scheduledDep, actualDep, depTimeKind,
+    scheduledArr, actualArr,
+    gateOrigin, gateDest, terminalOrigin, terminalDest,
+    observedDelayMinutes, inboundDelayMinutes,
+    incomingAircraftStatus,
+  } = result
+
+  const depDisplay = actualDep !== 'TBD' ? actualDep : scheduledDep
+  const arrDisplay = actualArr !== 'TBD' ? actualArr : scheduledArr
+  const isEstimated = depTimeKind === 'estimated'
 
   return (
     <div className="card flight-header">
       <div className="header-top">
         <div className="flight-id">
           <span className="flight-num">{flightNumber}</span>
-          <span className="operator">{status.operator}</span>
-          <span className="aircraft">{status.aircraft_type}</span>
+          {airline && airline !== 'Unknown Airline' && (
+            <span className="operator">{airline}</span>
+          )}
+          <span className="aircraft-status">{incomingAircraftStatus}</span>
         </div>
-        <span className="flight-status-badge" style={{ color: statusColor(status.status) }}>
-          {status.status}
+        <span className="flight-status-badge" style={{ color: statusColor(status) }}>
+          {status}
         </span>
       </div>
 
       <div className="route-row">
         <div className="airport-block">
-          <span className="iata">{status.origin?.code_iata ?? '—'}</span>
-          <span className="city">{status.origin?.city ?? '—'}</span>
-          <span className="time">{fmtTime(status.estimated_out ?? status.scheduled_out, status.origin?.timezone)}</span>
-          {status.terminal_origin && <span className="detail">T{status.terminal_origin}</span>}
+          <span className="iata">{origin}</span>
+          <span className="time">
+            {depDisplay}
+            {isEstimated && <span className="est-label"> est.</span>}
+          </span>
+          {gateOrigin !== '-' && (
+            <span className="detail">
+              {terminalOrigin !== '-' ? `T${terminalOrigin} · ` : ''}Gate {gateOrigin}
+            </span>
+          )}
         </div>
 
         <div className="route-arrow">
-          <span className="distance">{status.route_distance ? `${status.route_distance} nm` : ''}</span>
           <div className="arrow-line"><span>→</span></div>
         </div>
 
         <div className="airport-block right">
-          <span className="iata">{status.destination?.code_iata ?? '—'}</span>
-          <span className="city">{status.destination?.city ?? '—'}</span>
-          <span className="time">{fmtTime(status.estimated_in ?? status.scheduled_in, status.destination?.timezone)}</span>
-          {status.gate_destination && <span className="detail">Gate {status.gate_destination}</span>}
+          <span className="iata">{destination}</span>
+          <span className="time">{arrDisplay}</span>
+          {gateDest !== '-' && (
+            <span className="detail">
+              {terminalDest !== '-' ? `T${terminalDest} · ` : ''}Gate {gateDest}
+            </span>
+          )}
         </div>
       </div>
 
-      {(depDelay !== 0 || arrDelay !== 0) && (
-        <div className="delay-pills">
-          {depDelay !== 0 && (
-            <span className={`pill ${depDelay > 0 ? 'pill-warn' : 'pill-ok'}`}>
-              Dep {depDelay > 0 ? `+${depDelay}` : depDelay} min
-            </span>
-          )}
-          {arrDelay !== 0 && (
-            <span className={`pill ${arrDelay > 0 ? 'pill-warn' : 'pill-ok'}`}>
-              Arr {arrDelay > 0 ? `+${arrDelay}` : arrDelay} min
-            </span>
-          )}
-        </div>
-      )}
+      <div className="delay-pills">
+        {observedDelayMinutes > 0 && (
+          <span className="pill pill-warn">Dep +{observedDelayMinutes} min</span>
+        )}
+        {observedDelayMinutes === 0 && status.toLowerCase().includes('on time') && (
+          <span className="pill pill-ok">On Time</span>
+        )}
+        {inboundDelayMinutes != null && inboundDelayMinutes > 0 && (
+          <span className="pill pill-warn">Inbound +{inboundDelayMinutes} min</span>
+        )}
+      </div>
     </div>
   )
 }

@@ -1,3 +1,13 @@
+---
+title: SkyAgent
+emoji: ✈️
+colorFrom: blue
+colorTo: indigo
+sdk: docker
+app_port: 7860
+pinned: false
+---
+
 # SkyAgent — Agentic Aviation Delay Propagation System
 
 <p>
@@ -190,9 +200,9 @@ All clients use a thread-safe `TTLCache` (5-min TTL). Set `USE_FIXTURES=1` to se
 |----------|---------|-------------|
 | `FLIGHTAWARE_API_KEY` | — | FlightAware AeroAPI v4 key |
 | `CHECKWX_API_KEY` | — | CheckWX API key |
-| `VLLM_BASE_URL` | `http://localhost:8000/v1` | vLLM endpoint |
-| `VLLM_API_KEY` | `skyagent-dev` | vLLM bearer token |
-| `VLLM_MODEL` | `Qwen/Qwen2.5-7B-Instruct` | Model identifier |
+| `LLM_BASE_URL` | `http://localhost:8000/v1` | OpenAI-compatible endpoint (vLLM, Gemini, etc.) |
+| `LLM_API_KEY` | `skyagent-dev` | Bearer token for the endpoint |
+| `LLM_MODEL` | `Qwen/Qwen2.5-7B-Instruct` | Model identifier |
 | `MODEL_WEIGHTS_PATH` | — | Path to `stgnn_best.pt` |
 | `USE_FIXTURES` | `0` | Enable offline fixture mode |
 | `CORS_ALLOW_ORIGINS` | `http://localhost:3000` | Comma-separated allowed origins |

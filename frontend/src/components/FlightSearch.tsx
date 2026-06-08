@@ -31,7 +31,6 @@ export default function FlightSearch({ onSearch, loading }: Props) {
           {loading ? <span className="spinner" /> : 'Analyze'}
         </button>
       </div>
-      <p className="search-hint">Powered by ST-GNN delay prediction + Qwen2.5-7B on GMU Hopper</p>
     </form>
   )
 }

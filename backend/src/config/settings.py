@@ -36,10 +36,10 @@ CORS_ALLOW_ORIGINS = os.environ.get("CORS_ALLOW_ORIGINS", "http://localhost:3000
 MODEL_WEIGHTS_PATH = os.environ.get("MODEL_WEIGHTS_PATH", "")
 STGNN_OUTPUT_SCALE = float(os.environ.get("STGNN_OUTPUT_SCALE", "100") or 100.0)
 
-# vLLM / LLM settings (for Hopper agent system)
-VLLM_BASE_URL = os.environ.get("VLLM_BASE_URL", "http://localhost:8000/v1")
-VLLM_API_KEY = os.environ.get("VLLM_API_KEY", "skyagent-dev")
-VLLM_MODEL = os.environ.get("VLLM_MODEL", "Qwen/Qwen2.5-7B-Instruct")
+# LLM settings — any OpenAI-compatible endpoint (Gemini, vLLM, OpenAI, etc.)
+LLM_BASE_URL = os.environ.get("LLM_BASE_URL", "http://localhost:8000/v1")
+LLM_API_KEY = os.environ.get("LLM_API_KEY", "skyagent-dev")
+LLM_MODEL = os.environ.get("LLM_MODEL", "Qwen/Qwen2.5-7B-Instruct")
 
 USE_FIXTURES = os.environ.get("USE_FIXTURES", "").strip() in ("1", "true", "yes")
 

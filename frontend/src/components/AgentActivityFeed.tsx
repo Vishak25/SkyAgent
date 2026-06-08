@@ -2,22 +2,26 @@ interface Props {
   log: string[]
 }
 
-const ICONS: Record<string, string> = {
-  FlightMonitor: '✈',
-  Weather:       '🌤',
-  DelayRisk:     '📊',
-  Rerouting:     '🔀',
-  Summary:       '🤖',
-}
+// Prefix → icon mapping. Order matters: first match wins.
+const ICONS: [string, string][] = [
+  ['FlightMonitor', '✈'],
+  ['Track',         '✈'],
+  ['Weather',       '🌤'],
+  ['DelayRisk',     '📊'],
+  ['Rerouting',     '🔀'],
+  ['Summary',       '🤖'],
+]
 
 function getIcon(entry: string): string {
-  for (const [key, icon] of Object.entries(ICONS)) {
-    if (entry.startsWith(key)) return icon
+  for (const [prefix, icon] of ICONS) {
+    if (entry.startsWith(prefix)) return icon
   }
   return '•'
 }
 
 export default function AgentActivityFeed({ log }: Props) {
+  if (!log || log.length === 0) return null
+
   return (
     <div className="card agent-feed">
       <h3 className="card-title">Agent Pipeline</h3>

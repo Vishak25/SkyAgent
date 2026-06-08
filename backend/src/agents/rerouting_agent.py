@@ -1,13 +1,8 @@
 """
 Rerouting Agent — finds and ranks alternative routes when delay risk is high.
 
-Phase 3 implementation. Builds on the suggest_routes logic to:
-  - Enumerate direct + 1-stop alternatives using AeroAPI schedules
-  - Score each itinerary with the ST-GNN via TAF forecast features
-  - Generate a human-readable recommendation using the vLLM model
-  - Return ranked alternatives with natural language justification
-
-TODO Phase 3: Implement as a LangGraph node with vLLM tool-calling.
+Wraps suggest_routes() for standalone use.  The model must be injected —
+it never falls back to a randomly-initialised STGNN.
 """
 from __future__ import annotations
 
@@ -22,14 +17,16 @@ class ReroutingAgent:
 
     DELAY_THRESHOLD_MINUTES = 30
 
-    def __init__(self, model: Optional[STGNN] = None):
-        self.graph_handler = AviationGraphHandler()
-        self.model = model or STGNN(in_channels=5, hidden_channels=32, out_channels=1)
+    def __init__(self, model: STGNN, graph_handler: Optional[AviationGraphHandler] = None):
+        if model is None:
+            raise ValueError(
+                "ReroutingAgent requires a trained STGNN instance. "
+                "Never pass None — that would silently use random weights."
+            )
+        self.model = model
+        self.graph_handler = graph_handler or AviationGraphHandler()
 
     async def run(self, origin: str, destination: str, date_str: Optional[str] = None) -> Dict[str, Any]:
-        """
-        Return ranked alternative itineraries.
-        TODO Phase 3: Enhance with vLLM-generated natural language explanation.
-        """
+        """Return ranked alternative itineraries."""
         result = self.graph_handler.suggest_routes(origin, destination, self.model, date_str=date_str)
         return result
