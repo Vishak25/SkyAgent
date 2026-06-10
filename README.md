@@ -22,18 +22,21 @@ pinned: false
 
 > Multi-agent LangGraph system for real-time flight delay prediction and propagation analysis, backed by a Spatio-Temporal Graph Neural Network (ST-GNN) and large language model inference on the GMU Hopper HPC cluster.
 
+**🚀 Live demo:** [huggingface.co/spaces/Vishak25/SkyAgent](https://huggingface.co/spaces/Vishak25/SkyAgent)
+
 ---
 
 ## Table of Contents
 
 1. [Project Overview](#1-project-overview)
-2. [System Architecture](#2-system-architecture)
-3. [Backend](#3-backend)
-4. [Frontend](#4-frontend)
-5. [HPC Deployment (GMU Hopper)](#5-hpc-deployment-gmu-hopper)
-6. [Data Sources](#6-data-sources)
-7. [Development Guide](#7-development-guide)
-8. [Project Phases](#8-project-phases)
+2. [Results](#2-results)
+3. [System Architecture](#3-system-architecture)
+4. [Backend](#4-backend)
+5. [Frontend](#5-frontend)
+6. [HPC Deployment (GMU Hopper)](#6-hpc-deployment-gmu-hopper)
+7. [Data Sources](#7-data-sources)
+8. [Development Guide](#8-development-guide)
+9. [Project Phases](#9-project-phases)
 
 ---
 
@@ -56,7 +59,24 @@ SkyAgent predicts flight delays and propagates risk through the aviation network
 
 ---
 
-## 2. System Architecture
+## 2. Results
+
+ST-GNN test-set performance (held-out snapshots from the 30-day IEM METAR window):
+
+| Metric | Value |
+|--------|-------|
+| **MAE** | **4.64 min** |
+| RMSE | 9.71 min |
+| Predictions within ±15 min | **90.6%** |
+| Predictions within ±30 min | 97.1% |
+| Best validation MAE | 3.22 min (epoch 296/300) |
+| Model size | **1,793 parameters** |
+
+The model is deliberately tiny — fewer than 2K parameters — yet lands 9 out of 10 delay predictions within 15 minutes of the actual value. Full details in [`backend/model_weights/training_report.json`](backend/model_weights/training_report.json).
+
+---
+
+## 3. System Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -108,7 +128,7 @@ SkyAgent predicts flight delays and propagates risk through the aviation network
 
 ---
 
-## 3. Backend
+## 4. Backend
 
 **Location:** `backend/` | **Runtime:** Python 3.11 via `uv`
 
@@ -181,7 +201,7 @@ backend/
 - **Input:** 5 features per airport node — visibility, wind, ceiling, precipitation severity, flight category ordinal
 - **Architecture:** GCNConv(5→32) → GCNConv(32→32) → GCNConv(32→32) + temporal attention head → Linear(32→1)
 - **Output:** log-space delay minutes, inverted at inference via `expm1()`
-- **Training:** MSE loss, Adam optimizer on 30-day IEM METAR snapshots across 20 hub airports
+- **Training:** MSE loss, Adam optimizer on 720 hourly IEM METAR graph snapshots (30-day window across 10 international hubs)
 - **Weights:** `model_weights/stgnn_best.pt` (loaded at FastAPI startup)
 
 ### Tool clients
@@ -209,7 +229,7 @@ All clients use a thread-safe `TTLCache` (5-min TTL). Set `USE_FIXTURES=1` to se
 
 ---
 
-## 4. Frontend
+## 5. Frontend
 
 **Location:** `frontend/` | **Stack:** React 18 + TypeScript + Vite  
 **Dev server:** `npm run dev` → `http://localhost:3000`  
@@ -229,7 +249,7 @@ All clients use a thread-safe `TTLCache` (5-min TTL). Set `USE_FIXTURES=1` to se
 
 ---
 
-## 5. HPC Deployment (GMU Hopper)
+## 6. HPC Deployment (GMU Hopper)
 
 ### SLURM scripts
 
@@ -263,7 +283,7 @@ cd frontend && npm run dev
 
 ---
 
-## 6. Data Sources
+## 7. Data Sources
 
 | Source | Used for |
 |--------|---------|
@@ -274,7 +294,7 @@ cd frontend && npm run dev
 
 ---
 
-## 7. Development Guide
+## 8. Development Guide
 
 ### Prerequisites
 
@@ -308,7 +328,7 @@ npm run build    # production build
 
 ---
 
-## 8. Project Phases
+## 9. Project Phases
 
 | Phase | Status | Description |
 |-------|--------|-------------|
